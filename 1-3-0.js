@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Artist Watchlist
+// @name         Artist Watchlist 
 // @description  Follow posts from your favorite artists!
 // @namespace    https://e621.net/artist/watchlist
 // @version      1.3.0
