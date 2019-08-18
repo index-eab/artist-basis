@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         e621 Artist Basis
-// @description  Artist-based tools including subscriptions and galleries
-// @namespace    https://e621.net/artist/watchlist
+// @name         Artist Basis
+// @description  Artist-based tools for e621 including subscriptions and galleries
+// @namespace    https://e621.net/basis/watchlist
 // @version      2.0.0
 // @author       index
 // @license      GPL-3.0-or-later
@@ -10,24 +10,29 @@
 // @run-at       document-start
 // @updateURL    https://openuserjs.org/meta/index-eaw/Artist_Watchlist.meta.js
 // @downloadURL  https://openuserjs.org/install/index-eaw/Artist_Watchlist.user.js
-// @grant        GM_getResourceURL
-// @resource     demo    https://raw.githubusercontent.com/index-eaw/artist-basis/master/img/demo.png
-// @resource     logos   https://raw.githubusercontent.com/index-eaw/artist-basis/master/img/logos13.png
+// @grant        GM.getResourceUrl
+// @resource     demo    https://raw.githubusercontent.com/index-eaw/artist-basis/master/img/demo_00.png
+// @resource     logos   https://raw.githubusercontent.com/index-eaw/artist-basis/master/img/logos_00.png
 // @require      https://raw.githubusercontent.com/pieroxy/lz-string/master/libs/lz-string.min.js
 // ==/UserScript==
 
 (async function() {
 	
 	'use strict';
+	// todo:
+		// blacklist taking effect on gallery?
+		// check backward compatibility (check!) just try an older save from main account
 	
 	// - General - - - - - - //{
 	let notArtists = [ 'unknown_artist','unknown_artist_signature','unknown_colorist','anonymous_artist','avoid_posting','conditional_dnp','sound_warning','epilepsy_warning' ];
 	let forbidden = { 'start': ['-', '~', '+'], 'any': [','] };   // characters that cause problems
 	let tagLim = { 'e621.net': 6, 'e926.net': 5 };   // higher-tier accounts can increase these
+	let roles = [  ];   // 'dev', 'noImage'
+	
 	let storLim = { 'blacklist': 750, 'sites': 100 };
-	let timeout = { 'cache': 90, 'storage': 15, 'gallery': 60*24, 'multisearch': 60*24*365 };   // minimum, in minutes
+	let timeout = { 'cache': 90, 'storage': 15, 'gallery': 60*24, 'multisearch': 60*24*365 };   // in minutes
 	let ppa = 8;   // posts per artist - increasing results in larger but fewer server requests
-	let roles = [ 'dev' ];
+	let slow = { warn: 4000, simplify: 4000 };   // milliseconds
 	
 	
 	//}
@@ -47,7 +52,9 @@
 			}`;
 		
 		if ( roles.includes('active') ) css += `
-			#navbar li:nth-child(${child})::${pseudo} {
+			#content > div {
+				visibility: hidden;
+			} #navbar li:nth-child(${child})::${pseudo} {
 				background-color: #152f56;
 				border-radius: 6px 6px 0 0;
 				color: #FFF !important;
@@ -89,7 +96,7 @@
 	}
 	
 	document.addEventListener('keydown', e => { if (e.keyCode === 27) quit('Halted with Esc key.'); });
-	if (Array.prototype.toJSON) delete Array.prototype.toJSON;  // fuck off prototype.js
+	if (Array.prototype.toJSON) delete Array.prototype.toJSON;  // fuck off prototype.js (note: array.reduce is fucked too)
 	
 	let now = () => Date.now()/1000;  // alert - freeze at start?
 	let lastVisit = now(), lastSaved = now(), cooldown;
@@ -102,7 +109,7 @@
 	
 	let timer = wait => new Promise(resolve => setTimeout(resolve, wait));
 	let defined = check => check !== undefined;
-	let domStatus = { blacklist: false, sites: false };
+	let domStatus = { blacklist: false, sites: false, slow: false, prevNext: false };
 	let compress = obj => LZString.compressToUTF16(JSON.stringify(obj));
 	
 	
@@ -124,12 +131,12 @@
 			else node.setAttribute(prop, val);
 		},
 		text: cont => document.createTextNode(cont),
-		frag: props => n.elem(document.createDocumentFragment(), props)
+		frag: props => n.elem(document.createDocumentFragment(), props),
+		temp: tag => { n[tag] = props => n.elem(document.createElement(tag), props); }
 	};
 	
-	['div', 'span', 'a', 'p', 'img', 'style', 'input', 'ul', 'ol', 'li', 'option', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'textarea'].forEach(tag => {
-		n[tag] = (props) => n.elem(document.createElement(tag), props);
-	});
+	['div', 'span', 'a', 'img', 'style', 'input', 'li', 'option', 'br', 'h4', 'h5', 'form', 'select'].forEach(n.temp);
+	let wikiHtml = () => ['h1', 'h2', 'h3', 'h6', 'blockquote', 'textarea', 'p', 'ul', 'ol'].forEach(n.temp);
 	
 	// GreaseMonkey fix - globalize access to the native e621 mode menu
 	try {
@@ -145,10 +152,10 @@
 	let e621 = ['e621.net', 'e926.net'].includes(host);
 	let paginator = getId('paginator');
 	
-	let cookie = { };
-	document.cookie.split('; ').forEach(crumb => {
-		cookie[crumb.split('=')[0]] = crumb.split('=')[1];
-	});
+	let cookie = { }, searchParams = { };
+	let deconstr = ( part, obj ) => obj[part.split('=')[0]] = part.split('=')[1];
+	document.cookie.split('; ').forEach(part => deconstr(part, cookie));
+	window.location.search.substr(1).split('&').forEach(part => deconstr(part, searchParams));
 	
 	if (e621) sh = {
 		scheme   : () => getId('user_css').value,
@@ -189,8 +196,7 @@
 		
 		subnav.innerHTML = '';
 		subnav.appendChild( n.sub(sh.pgFormat('watchlist'), 'Watchlist') );
-		subnav.appendChild( n.sub('/tag?type=1&order=date&basis=true', 'Gallery (tags)') );
-		subnav.appendChild( n.sub('/artist?basis=true', 'Gallery (wikis)') );
+		subnav.appendChild( n.sub('/tag?type=1&order=date&basis=true', 'Gallery') );
 		subnav.appendChild( n.sub(sh.pgFormat('config'), 'Configure') );
 		subnav.appendChild( n.sub(sh.pgFormat('help'), 'Help') );
 	}
@@ -204,36 +210,37 @@
 	if ( search.includes('basis=true') && path.includes('artist') ) roles.push('gallery', 'galleryWiki');
 	if ( search.includes('basis=true') && path.includes('tag') && search.includes('type=1') ) roles.push('gallery', 'galleryTag');
 	if ( path.includes('basis') && path.includes('watchlist') ) roles.push('watchlist');
-	if ( path.includes('basis') && path.includes('help') ) roles.push('help');
-	if ( path.includes('basis') && path.includes('config') ) roles.push('config');
+	if ( path.includes('basis') && path.includes('help') ) roles.push('wiki', 'help');
+	if ( path.includes('basis') && path.includes('config') ) roles.push('wiki', 'config');
+	if ( path.includes('basis') && path.includes('search') ) roles.push('search');
 	if ( artistTags.length > 0 ) roles.push('artistTags');
 	if ( mode ) roles.push('favlist');
 	
 	if ( roles.length === 0 ) return;
 	if ( search.includes('dev') ) roles.push('dev');
 	
-	let titles = { galleryWiki: 'Artist Gallery (wikis)', galleryTag: 'Artist Gallery (tags)', watchlist: 'Artist Watchlist', help: 'Help: Artist Basis', config: 'Configure: Artist Basis' };
+	let titles = { galleryWiki: 'Artist Gallery', galleryTag: 'Artist Gallery', watchlist: 'Artist Watchlist', help: 'Help: Artist Basis', config: 'Configure: Artist Basis', search: 'Artist Gallery' };
 	Object.keys(titles).forEach( page => {
-		if ( roles.includes(page) ) setTitle(titles[page]);
+		if ( roles.includes(page) ) setTitle({ galleryWiki: 'Artist Gallery (wikis)', galleryTag: 'Artist Gallery (tags)', watchlist: 'Artist Watchlist', help: 'Help: Artist Basis', config: 'Configure: Artist Basis', search: 'Artist Search' }[page]);
 	} );
 	
 	//}
 	
 	// - Content - - - - - - //{
 	let sites = [ ], extSites = {
-		twitter:        { name: 'Twitter',         url: 'https://twitter.com/home' },
-		deviantArt:     { name: 'DeviantArt',      url: 'https://deviantart.com/notifications/#view=watch' },
-		furAffinity:    { name: 'Fur Affinity',    url: 'https://furaffinity.net/msg/submissions' },
-		patreon:        { name: 'Patreon',         url: 'https://patreon.com/home' },
-		pixiv:          { name: 'Pixiv',           url: 'https://pixiv.net/bookmark_new_illust.php' },
-		hentaiFoundry:  { name: 'Hentai Foundry',  url: 'https://hentai-foundry.com/users/FaveUsersRecentPictures?enterAgree=1&username=', prompt: ' insert_username_here' },
-		newGrounds:     { name: 'NewGrounds',      url: 'https://newgrounds.com/social' },
-		tumblr:         { name: 'Tumblr',          url: 'https://tumblr.com/dashboard' },
-		weasyl:         { name: 'Weasyl',          url: 'https://weasyl.com/messages/submissions' },
-		furryNetwork:   { name: 'FurryNetwork',    url: 'https://furrynetwork.com' },
-		inkBunny:       { name: 'Inkbunny',        url: 'https://inkbunny.net/submissionsviewall.php?mode=unreadsubs' },
-		soFurry:        { name: 'SoFurry',         url: 'https://sofurry.com/browse/watchlist' },
-		fanbox:         { name: 'Pixiv Fanbox',    url: 'https://pixiv.net/fanbox' },
+		twitter:        { name: 'Twitter',         url: 'twitter.com/home' },
+		deviantArt:     { name: 'DeviantArt',      url: 'deviantart.com/notifications/#view=watch' },
+		furAffinity:    { name: 'Fur Affinity',    url: 'furaffinity.net/msg/submissions' },
+		patreon:        { name: 'Patreon',         url: 'patreon.com/home' },
+		pixiv:          { name: 'Pixiv',           url: 'pixiv.net/bookmark_new_illust.php' },
+		hentaiFoundry:  { name: 'Hentai Foundry',  url: 'hentai-foundry.com/users/FaveUsersRecentPictures?enterAgree=1&username=', prompt: ' insert_username' },
+		newGrounds:     { name: 'NewGrounds',      url: 'newgrounds.com/social' },
+		tumblr:         { name: 'Tumblr',          url: 'tumblr.com/dashboard' },
+		weasyl:         { name: 'Weasyl',          url: 'weasyl.com/messages/submissions' },
+		furryNetwork:   { name: 'FurryNetwork',    url: 'furrynetwork.com' },
+		inkBunny:       { name: 'Inkbunny',        url: 'inkbunny.net/submissionsviewall.php?mode=unreadsubs' },
+		soFurry:        { name: 'SoFurry',         url: 'sofurry.com/browse/watchlist' },
+		fanbox:         { name: 'Pixiv Fanbox',    url: 'pixiv.net/fanbox' },
 	};
 	let extSiteList = Object.keys(extSites);
 	let extSiteParse = ex => {
@@ -261,15 +268,19 @@
 	let color = (variant, opacity = '') => '#' + sub('text')[variant] + opacity;
 	let font = (def) => def + ( sub('tSizeAdjust') || 0 ) + 'pt';
 	
-	let blWidth = 189, pWidthMin = 80, pPadding = 0.6;
+	let eabWidth = 189, pWidthMin = 80, pPadding = 0.6;
 	let pWidth = (x) => `calc(${Math.max(x, pWidthMin)}px + ${2*pPadding}ex)`;
 	
-	let logosData = GM_getResourceURL('logos'), logosStyle = '';
+	let logosData = await GM.getResourceUrl('logos'), interfaceData = await GM.getResourceUrl('demo'), logos = { }, logosStyle = '';
+	if ( logosData.substring(0, 4) === 'blob' ) logos.blob = logosData;
+	else logos.base = logosData;
+	
 	for (let site in extSites) logosStyle += `.eabExt${site} { background-position: -${extSiteList.indexOf(site)*32}px }`;
 	
 	style = () => `
 		.eab input:disabled { background: #555;
 		} .eab { text-shadow: 0 0 3px ${color(2)};
+		} .eab #paginator { text-shadow: none;
 		} .eab:not(.favlist) { display: initial;
 		} .eab .sidebar::-webkit-scrollbar { display: none;
 		} .eabFade { opacity: 0.5;
@@ -281,9 +292,9 @@
 			padding-top: 1ex;
 			z-index: 100;
 		} .eab .sidebar > div {
-			margin: 0 0 1.5em
+			margin: 0 0 2em
 		} .eab form table {
-			width: ${blWidth}px;
+			width: ${eabWidth}px;
 			padding: 0;
 		} .eab td {
 			padding: 0.5px 0;
@@ -292,13 +303,16 @@
 			width: 80%;
 			margin: 0.5px 0;
 			top: 0;
+		} #eabSearch input[type="submit"] {
+			margin: 0.625ex 0;
 		} #eabSearch input:not([type="submit"]), #eabSearch select {
 			right: 1px;
 		} #eabSearch select {
 			width: calc(80% + 4px);
 			padding: 0;
-		} #eabSearch input[type="submit"]:hover {
-			background: ${hsl(1, 100, -1/10)};
+		} .eab input[type="submit"]:hover {
+			/*background: ${hsl(1, 100, -1/10)};*/
+			color: ${color(1)};
 		
 		
 		} .eabLayer, .eabLayer div {
@@ -335,6 +349,7 @@
 			margin: 1em 0;
 		} .eab span.thumb a {
 			box-shadow: none;
+			display: block;
 		} .eab span.thumb a:first-child {
 			display: initial;
 		} .eab span.thumb > span {
@@ -386,9 +401,7 @@
 			font-size: 10pt;
 		} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki, .eab .thumb:hover .newCounter::before {
 			opacity: 1;
-		} .eab .thumb:hover .eabFade {
-			opacity: 0.7;
-		} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki, .eab .thumb a:last-child span {
+		} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki, .eabArtist a:last-child span {
 			padding: 0 0.7ex;
 		} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki {
 			width: initial;
@@ -398,7 +411,7 @@
 		} .eab .thumb:hover .expand::before { width: 7ch;
 		} .eab .thumb:hover .collapse::before { width: 9ch;
 		
-		} .favlist .post-score:last-of-type, .eab .thumb > span > *:last-child {
+		} .eab .post-score:last-child, .eab .post-date {
 			border-radius: 0 0 4px 4px;
 			border-bottom-width: 1px;
 		} .eab .post-date {
@@ -407,7 +420,7 @@
 			line-height: 10pt;
 		} .post-date .eabFade {
 			padding-left: 0.5ex;
-		} .eab .post-score:not(.post-date) {
+		} .eab .eabArtist {
 			line-height: 1rem;
 		} .eab .newCounter, .eab .eabSwfNotice {
 			position: absolute;
@@ -437,13 +450,15 @@
 			margin-top: 1.5em;
 		} .eab textarea {
 			box-shadow: none;
-			width: ${blWidth*2 - 4}px;
+			width: ${eabWidth*2 - 4}px;
 			font-size: ${font(10)};
 		} .eab blockquote, .eab blockquote > p {
 			background: ${hsl(1)};
+		} .eab #help-sidebar li {
+			margin: 0;
 		
 		} #eabExternal {
-			min-height: 32px;
+			min-height: 35px;
 		} #eabExternalPresets div {
 			display: inline-block;
 			width: 12em;
@@ -463,7 +478,7 @@
 			display: inline-block;
 			width: 32px;
 			height: 32px;
-			background-image: url(${logosData});
+			${logos.base ? 'background-image: url('+logos.base+');' : ''}
 			background-size: auto 32px;
 			filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000) drop-shadow(0 0 2px ${hsl(2)});
 			margin-right: 0.5ex;
@@ -477,11 +492,12 @@
 		} .eab input, .eab select {
 			box-shadow: 0 0 4px ${hsl(4)};
 		} .eab input[type="submit"] {
-			box-shadow: 0 0 4px ${hsl(3, 100, -1/6)};
-			background: ${hsl(1)};
-			border: 1px solid ${hsl(4, 100, -1/5)};
+			/* box-shadow: 0 0 4px ${hsl(3, 100, -1/6)}; */ box-shadow: none;
+			/*background: ${hsl(1)};*/ background: none;
+			/*border: 1px solid ${hsl(4, 100, -1/5)};*/
+			margin: 0.75ex 0 0 !important;
 			text-shadow: 0 0 3px ${color(2)};
-		} .eabSave:not(.inactive):hover, #eabExternalPresets div:hover, .blItem:not(.demo) div:not(.blInput):not(.inactive):hover {
+		} .eabSave:not(.inactive):hover, #eabExternalPresets div:hover, .blItem:not(.demo) div:not(.blInput):not(.inactive):hover {  /* alert */
 			background: ${hsl(0, 100, -1/10)};
 		} .blItem div:not(.blInput).inactive, .eabSave.inactive {
 			color: ${color(0, 80)};
@@ -490,8 +506,10 @@
 			
 		} #eabBlacklist {
 			margin: 2px 0 0 0 !important;
+			width: ${eabWidth*1.5}px;
+		} .blItem.demo {
+			width: ${eabWidth*1.25}px;
 		} .blItem {
-			width: ${blWidth}px;
 			list-style-type: none;
 			margin: 0;
 		} .blInput {
@@ -503,9 +521,9 @@
 			color: ${color(0)};
 			text-align: center;
 			border-radius: 4px;
-			width: ${blWidth - 2}px !important;
+			width: ${eabWidth - 2}px !important;
 			padding: 0.1ex 0 0.2ex;
-			margin: 0.5ex 0 !important;
+			margin: 0.5ex 0;
 			line-height: 11.5pt;
 			font-family: verdana,sans-serif;
 			box-sizing: content-box;
@@ -544,7 +562,7 @@
 		.blItem:last-child div:last-child { border-bottom-left-radius: 4px; }
 		.blItem:last-child div:first-child { border-bottom-right-radius: 4px; }
 		
-		.eabSave, .blItem div:not(.blInput), #eabExternalPresets div {
+		.eabSave, .blItem div:not(.blInput), #eabExternalPresets div, .eabHeart {
 			-moz-user-select: none;
 			-webkit-user-select: none;
 			user-select: none;
@@ -563,15 +581,15 @@
 	let wikiTemplate = (intro, topics) => 
 		n.div({ id: 'wiki-show', class: 'eab wiki', desc: [
 			n.div({ 'class': 'sidebar', id: 'help-sidebar', style: 'margin-bottom: 1em', desc: [
-				n.h2({ text: 'Topics' }),
+				layout.status(),
+				n.h4({ text: 'Topics' }),
 				n.div({ width: '240px',   desc: n.ul({ class: 'link-page', desc:
 					topics.map( topic => n.li({ desc: n.a({ href: `#eab${topic}`, text: `» ${wiki.topics[topic]}` }) }) )
 				}) }),
 			] }),
 			
 			n.div({ id: 'wiki-body', desc: [
-				n.h1({ text: document.title.split(' - ')[0] }),
-				wiki[intro](),
+				//wiki[intro](),
 				...topics.map( topic => n.blockquote({ desc: [
 					n.h3({ text: wiki.topics[topic], id: `eab${topic}` }),
 					...wiki[topic]()
@@ -593,17 +611,17 @@
 			n.div({ id: 'eabBlCont', text: 'Waiting...' }),
 			
 			n.h5({ text: 'Examples' }),
-			n.p({ html: `Blocks explicit and questionable posts tagged "mammal":`, style: 'margin: 0 0 0.25em' }),
+			n.p({ text: `Blocks explicit and questionable posts tagged "mammal":`, style: 'margin: 0 0 0.25em' }),
 			n.div({ desc: blItem('mammal', 'eq', 'demo') }),
-			n.p({ html: `Blocks all posts tagged with <b>both</b> "anthro" <b>and</b> "mammal":`, style: 'margin: 0.75em 0 0.25em' }),
+			n.p({ text: `Blocks all posts tagged with both "anthro" and "mammal":`, style: 'margin: 0.75em 0 0.25em' }),
 			n.div({ desc: blItem('anthro mammal', 'sqe', 'demo') }),
-			n.p({ html: `Blocks safe posts tagged with "anthro" but <b>not</b> "mammal":`, style: 'margin: 0.75em 0 0.25em' }),
+			n.p({ text: `Blocks safe posts tagged with "anthro" but not "mammal":`, style: 'margin: 0.75em 0 0.25em' }),
 			n.div({ desc: blItem('anthro -mammal', 's', 'demo') }), n.br(),
 		],
 		
 		external : () => {
 			let eabExtPreset = site => n.div({ 'data-site': site, desc: [
-					n.a({ class: `eabExt${site}` }),
+					n.a({ ...logos.blob && { style: `background-image: url(${logos.blob})` }, class: `eabExt${site}` }),
 					n.span({ text: extSites[site].name })
 				] });
 			
@@ -636,7 +654,7 @@
 		
 		interface : () => [
 			n.p({ text: `The organization of links in a thumbnail changed in version 2.0. The image below explains the links shown when a thumbnail is hovered over.` }),
-			n.p({ html: `<img src="${GM_getResourceURL('demo')}" />` }),
+			n.p({ desc: n.img({ src: interfaceData }) }),
 			n.p({ text: `In the artist gallery, flash files are not normally shown because there is no thumbnail to represent the artist's work. When it appears, click the "swf" to be taken to the more popular flash file.` }),
 		],
 		
@@ -658,13 +676,13 @@
 		restoration : () => [
 			n.p({ html: `` }),
 			n.ol({ desc: [
-				n.li({ html: `<a href="${voidUrl}">Create a backup</a> first in case the data you're copying is corrupted somehow.` }),
+				n.li({ desc: [ n.a({ href: voidUrl, text: 'Create a backup', onclick: backup }), n.text(` first.`) ] }),
 				n.li({ text: `Open the backup you'd like to restore in a simple text reader program. Your web browser is a reliable option. Copy the contents.` }),
 				n.li({ html: `Check this <a href="/set?name=artist_watchlist">set list</a> for a private set created by your account. `, desc: n.ul({ desc:
 					n.li({ text: `Very old versions of the tool may have created multiple sets. If you find an extra set that hasn't been updated in a long time, you can safely delete it.` })
 				}) }),
 				n.li({ text: `Edit the set, and paste the backup into the set description field.` }),
-				n.li({ html: `<a href="${voidUrl}">Clear the script's cache.</a>` })
+				n.li({ desc: n.a({ href: voidUrl, text: `Clear the script cache.`, onclick: clearStorage }) })
 			] })
 		]
 	};
@@ -697,7 +715,7 @@
 		},
 		
 		external : () => {
-			let textarea = n.textarea({ rows: 6, cols: 50, spellcheck: false, onkeyup: () => updateSites().then(refresh) });
+			let textarea = n.textarea({ rows: 6, spellcheck: false, onkeyup: () => updateSites().then(refresh) });
 			let refresh = () => getId('eabExternal').parentElement.replaceChild( siteList(), getId('eabExternal') );
 			let esSaveElem, updateSites = () => {
 				saveCycle('active', 'sites', esSaveElem, save);
@@ -753,7 +771,7 @@
 	] });
 	
 	function blUnfocus(e) {
-		if ( blSection !== e.target && !blSection.contains(e.target) ) blSection.style.width = `${blWidth}px`;
+		if ( blSection !== e.target && !blSection.contains(e.target) ) blSection.style.width = `${eabWidth*1.5}px`;
 		
 		for ( let i = 0; i < blInputList.length - 1; ) {
 			if ( e.target === blInputList[i] || e.target.parentNode === blInputList[i].parentNode ) i++;
@@ -772,7 +790,7 @@
 		}
 		
 		let width = blAdjust.context.measureText(e.target.textContent + 'mxxxxxxxxx').width; // em + 9ex
-		blSection.style.width = Math.max(width, blWidth) + 'px';
+		blSection.style.width = Math.max(width, eabWidth*1.5) + 'px';
 		
 		if (blInputList[blInputList.length-1].textContent.length !== 0) blSection.appendChild( blItem('', 'sqe') );
 	}
@@ -810,6 +828,7 @@
 		saveChanges().then( () => {
 			storage('eabInvalidateCache', 'true');
 			saveCycle('inactive', 'blacklist', blSaveElem, blSave);
+			blReady = true;
 		} );
 	}
 	
@@ -817,41 +836,57 @@
 	//}
 	// - - layout/sidebar    //{
 	let content = sh.content(), loggedIn = sh.loggedIn();
-	let gallery, posts, manageField, backupLink, postList, sidebar, status;
+	let gallery, posts, postList, sidebar, status;
 	let voidUrl = 'javascript:void(0);';
 	
 	let help = {
 		span : title => n.span({ class: 'searchhelp', style: 'cursor:help', title, html: '&nbsp; (?)' }),
-		a : href => n.a({ class: 'searchhelp', html: '&nbsp; (help)', target: '_blank', href })
+		a : href => n.a({ class: 'searchhelp', html: '&nbsp; (help)', href })
 	};
 	
 	log = {
 		action : n.div({ text: 'Waiting...' }),
-		notice : text => {
-			if ( status ) status.insertBefore( n.div({ style: 'margin-bottom: 1em', text: `Notice: ${text}` }), log.action );
+		notice : (text, id) => {
+			if ( status ) status.insertBefore( n.div({ ...id && { id: `eabLog_${id}` }, style: 'margin-bottom: 1em', text: `Notice: ${text}` }), log.action );
 		},
 		
+		clear : id => {
+			let del = getId(`eabLog_${id}`);
+			if ( del ) del.parentNode.removeChild(del);
+		},
 		set : (line, txt) => {
 			if (log[line].textContent === txt) return;
 			log[line].textContent = txt;
 			if (roles.includes('dev')) console.log(`Log: ${txt}`);
 		},   ready : () => {
 			log.set('action', 'Ready!');
-			log.action.appendChild( n.frag({ desc: [ n.text(' Click '), eabHeart('eabExample', ''), n.text(' anywhere on the site to add an artist. You can search below.') ] }) );
+			log.action.appendChild( n.frag({ desc: [ n.text(' Click '), eabHeart('eabExample', ''), n.text(' anywhere on the site to add an artist.') ] }) );
 		}
 	};
+	
+	let galleryLink = (page, params) => {
+		if ( roles.includes(page) ) params = { ...params, style: `${params.style || ''} font-weight: bold; color: ${color(1)}` };
+		return roles.includes(page) ? n.span(params) : n.a(params);
+	}, middot = () => n.span({ style: 'font-weight: bold', text: ' · ' });
 	
 	let layout = {
 		status : () => status = n.div({ desc: [
 			n.h4({ text: titles[ Object.keys(titles).find( page => roles.includes(page) ) ] }),
-			log.action
+			...roles.includes('gallery') || roles.includes('search') ? [
+				galleryLink('galleryTag', { text: 'tags', href: '/tag?type=1&order=date&basis=true', style: 'display: inline-block; margin: 0 0 1.25ex 2ex;' }), middot(),
+				galleryLink('galleryWiki', { text: 'wikis', href: '/artist?basis=true' }), middot(),
+				galleryLink('search', { text: 'search', href: '/basis/search' })
+			] : [],   log.action
 		] }),
 		
 		// Not here? Try <a>searching the Wiki Gallery</a>, which also scans aliases.
 		manage : () => n.div({ desc: [
 			n.h5({ text: 'Find an artist' }),
-			manageField = n.input({ style: `width:${blWidth - 6}px`, type: 'text', onkeydown: undefined }),
-			n.input({ type: 'submit', value: 'Search' })
+			n.form({ action: '/basis/search', method: 'get', desc: [
+				n.input({ style: `width:${eabWidth - 6}px`, name: 'name', type: 'text',
+				...( roles.includes('search') && searchParams.name ) && { value: searchParams.name } }),
+				n.input({ type: 'submit', value: '[ search ]' }),
+			] })
 		] }),
 		
 		search : () => {
@@ -864,6 +899,7 @@
 			[...inputs, ...selects].forEach(input => {
 				if ( input.size ) input.removeAttribute('size');
 				if ( input.style ) input.removeAttribute('style');
+				if ( input.type === 'submit' ) input.value = '[ search ]';
 			});
 			
 			form.appendChild(n.input({ name: 'basis', 'value': true, hidden: true }));
@@ -888,14 +924,7 @@
 				help.span('If you like this script, please leave a comment in my thread! Your feedback is the only way I know if I should maintain and improve the tool.\n\nSuggestions and ideas are very welcome as well.')
 			] }),
 			
-			n.div({ desc: [
-				backupLink = n.a({ href: voidUrl, text: 'Create backup', onclick: async () => {
-					getPrefs('Retrieving backup...').then( set => {
-						saveFile(set.description);
-						log.set('action', 'Backup retrieved.');
-					} );
-				} })
-			] }),
+			n.div({ desc: n.a({ href: voidUrl, text: 'Create backup', onclick: backup }) }),
 			
 			n.div({ desc: [
 				n.a({ href: voidUrl, text: 'Clear cache', onclick: function() {
@@ -907,7 +936,7 @@
 		] }),
 		
 		sites : (cond = sites.length) => !cond ? false : n.div({ desc: [
-			n.h5({ text: 'Subscriptions' }),
+			n.h5({ text: 'Other sites' }),
 			siteList()
 		] })
 	};
@@ -916,8 +945,8 @@
 		let {site, mod} = extSiteParse(ex);
 		if ( !extSites[site] ) return;
 		
-		let href = extSites[site].url + (mod || '');
-		return n.a({ href, title: extSites[site].name, class: `eabExt${site}` });
+		let href = 'https://www.' + extSites[site].url + (mod || '');
+		return n.a({ href, ...logos.blob && { style: `background-image: url(${logos.blob})` }, title: extSites[site].name, class: `eabExt${site}` });
 	}).filter(defined) });
 	
 	let eabLayout = () => n.frag({ desc: [
@@ -933,7 +962,6 @@
 	let artists = [ ], watch = [ ], layers;
 	function init() {
 		if ( !prefs ) prefs = JSON.parse(storage('eabPrefs'));
-		
 		prefs.sites = prefs.sites || [ ];  // backward compatibility: pre-2.0
 		
 		if ( prefs.time ) {  // alert - does saving config interrupt cache?
@@ -966,16 +994,7 @@
 		
 		watch = assembleWatch(prefs.watchlist);
 		black = prefs.blacklist;
-		/*black = {'adventure_time': 'sqe', 'advertisement': 'sqe', 'alvin_and_the_chipmunks': 'sqe', 'american_dad': 'sqe', 'american_dragon:_jake_long': 'sqe', 'angela-45': 'sqe', 'angry_beavers': 'sqe', 'animal_crossing': 'sqe', 'animal_humanoid': 'sqe', 'animaniacs': 'sqe', 'arthur_(series)': 'sqe', 'barboskiny': 'sqe', 'bat_pony': 'sqe', 'bear_nuts': 'sqe', 'bee_sting': 'sqe', 'bendy_and_the_ink_machine': 'sqe', 'big_anus': 'sqe', 'billmund': 'sqe', 'blowhole': 'sqe', 'brandy_and_mr._whiskers': 'sqe', 'burping': 'sqe', 'chowder_(series)': 'sqe', 'crash_bandicoot_(series)': 'sqe', 'cuphead_(game)': 'sqe', 'dab': 'sqe', 'dangerdoberman': 'sqe', 'diaper': 'sqe', 'disney': 'sqe', 'distracting_watermark': 'sqe', 'dora_the_explorer': 'sqe', 'doug_winger': 'sqe', 'dragon_ball_z': 'sqe', 'dragon_tales': 'sqe', 'dreamworks': 'sqe', 'duck solo': 'sqe', 'elephant': 'sqe', '#password backup for ssh://root@proteles.softhyena.com = yummyyummyyummydaddyscummiesinmytummy69': 'sqe', 'elf': 'sqe', 'faf': 'sqe', 'family_guy': 'sqe', 'fan_character': 'sqe', 'fan_character ~gryphon ~pony': 'sqe', 'fart': 'sqe', 'five_nights_at_freddy\'s': 'sqe', 'foot_fetish': 'sqe', 'foot_focus': 'sqe', 'græyclaw': 'sqe', 'homestuck': 'sqe', 'how_to_train_your_dragon': 'sqe', 'human -anthro': 'sqe', 'human not_furry': 'sqe', 'human solo': 'sqe', 'humanoid': 'sqe', 'hyper': 'sqe', 'infestation': 'sqe', 'inflation': 'sqe', 'invader_zim': 'sqe', 'jasonafex': 'sqe', 'jasonafex type:swf': 'sqe', 'jonny_test': 'sqe', 'kung_fu_panda': 'sqe', 'lilo_and_stitch': 'sqe', 'littlest_pet_shop': 'sqe', 'living_machine': 'sqe', 'madagascar': 'sqe', 'mario_bros': 'sqe', 'mickey': 'sqe', 'minecraft': 'sqe', 'muppets': 'sqe', 'my_life_as_a_teenage_robot': 'sqe', 'my_little_pony': 'sqe', 'my_singing_monsters': 'sqe', 'nedroid': 'sqe', 'nezumi': 'sqe', 'nipple_mouth': 'sqe', 'not_furry': 'sqe', 'old -rating:s': 'sqe', 'overweight': 'sqe', 'photomorph': 'sqe', 'platypus': 'sqe', 'pokémon -arcanine -growlithe -decidueye -rockruff -lycanroc -poochyena -mightyena -furret': 'sqe', 'pony': 'sqe', 'pussy_mouth': 'sqe', 'regular_show': 'sqe', 'rocko\'s_modern_life': 'sqe', 'santa_claus': 'sqe', 'scaredy_squirrel': 'sqe', 'scat': 'sqe', 'scooby-doo_(series)': 'sqe', 'sing_(movie)': 'sqe', 'skeleton -rating:s': 'sqe', 'skunk_fu': 'sqe', 'skunk_spray': 'sqe', 'sonic_(series)': 'sqe', 'sonic_style': 'sqe', 'sonicdash': 'sqe', 'source_filmmaker': 'sqe', 'spanking': 'sqe', 'splatoon': 'sqe', 'spongebob_squarepants': 'sqe', 'spongebob_squarepants_(series)': 'sqe', 'star_fox macro': 'sqe', 'star_fox micro': 'sqe', 'star_wars': 'sqe', 'steven_universe': 'sqe', 'super_planet_dolan': 'sqe', 'switch_dog': 'sqe', 't.u.f.f._puppy': 'sqe', 'the_amazing_world_of_gumball': 'sqe', 'the_buzz_on_maggie': 'sqe', 'the_smurfs': 'sqe', 'them\'s_fightin\'_herds': 'sqe', 'troll': 'sqe', 'turtle': 'sqe', 'undertale rating:e -caprine -canine': 'sqe', 'undertale rating:q -caprine -canine': 'sqe', 'virgin_killer_sweater': 'sqe', 'warner_brothers': 'sqe', 'we_bare_bears': 'sqe', 'xarda': 'sqe', 'yin_yang_yo': 'sqe'};*/
 		sites = prefs.sites;
-		
-		/*for ( let item in black ) {
-			let nigga = '';
-			if ( Math.random() < 0.5 ) nigga += 's';
-			if ( Math.random() < 0.5 ) nigga += 'q';
-			if ( Math.random() < 0.5 ) nigga += 'e';
-			black[item] = nigga;
-		}*/
 		
 		if ( watch.length >= 400 ) eabCap();
 		
@@ -984,19 +1003,24 @@
 		if ( roles.includes('artistTags') ) initArtistTags();
 		if ( roles.includes('favlist') ) initFavlist();
 		if ( roles.includes('config') ) initConfig();
+		if ( roles.includes('search') ) initSearch();
 	}
 	
-	// times that will 
+	
 	let timeLayers = [ 'none', 'alias' ];
 	function initLayout(parts) {
 		sidebar.appendChild( n.frag({ desc: parts.map( part => (typeof layout[part] === 'function') ? layout[part]() : layout[part] ) }) );
 		
 		layers = [   ...layers,
 			{ id: 'alias', desc: `Can't identify artist`, append: help.span(`Possible causes:\n •  this is an alias\n •  name contains illegal characters\n •  tag type isn't "artist" and should be corrected`) },
-			{ id: 'none', desc: `No posts found`, append: help.span(`Possible causes:\n •  all posts blacklisted\n •  artist has gone DNP\n •  tag has been replaced with another name, but an alias was not set up\n •  on e926 and no posts exist`) },
+			{ id: 'none', desc: `No posts found`, append: help.span(`Possible causes:\n •  all posts blacklisted\n •  artist has gone DNP\n •  tag has been replaced, but an alias was not set up\n •  on e926 and no posts exist`) },
 			{ id: 'waiting', desc: 'Waiting' }
 		];
 		
+		populateGallery();
+	}
+	
+	function populateGallery() {
 		layers.forEach(layer => {
 			gallery.appendChild(n.div({ class: 'eabLayer', id: `eabLayer${layer.id ? layer.id : layers.indexOf(layer)}`, desc:
 				n.div({ html: layer.desc, ...layer.append && { desc: layer.append } })
@@ -1005,6 +1029,7 @@
 		gallery.appendChild(n.div({ class: 'Clear' }));
 		posts = gallery.childNodes;
 	}
+	
 	
 	function initArtistTags() {
 		for (let i = 0; i < artistTags.length; i++) {
@@ -1020,6 +1045,7 @@
 			getId(part).innerHTML = '';
 			getId(part).appendChild(overwrite[part]);
 		}
+		log.set('action', 'Ready.');
 	}
 	
 	
@@ -1031,7 +1057,7 @@
 	}
 	
 	let lineArtists;
-	if ( roles.includes('gallery') || roles.includes('watchlist') ) {
+	if ( roles.includes('gallery') || roles.includes('watchlist') || roles.includes('search') ) {
 		let frag = eabLayout();
 		
 		if ( roles.includes('gallery') ) prepGallery();
@@ -1040,7 +1066,11 @@
 		prepContent(frag);
 	}
 	
-	if ( roles.includes('help') ) prepContent( wikiTemplate( 'help', ['tips', 'interface', 'galleries', 'restoration'] ) );
+	if ( roles.includes('wiki') ) wikiHtml();
+	if ( roles.includes('help') ) {
+		prepContent( wikiTemplate( 'help', ['tips', 'interface', 'galleries', 'restoration'] ) );
+		log.set('action', 'Ready.');
+	}
 	if ( roles.includes('config') ) prepContent( wikiTemplate( 'config', ['blacklist', 'external'] ) );
 	if ( !loggedIn ) quit('Error: not logged in.');
 	
@@ -1055,7 +1085,7 @@
 			{ time: 60*60*24*7, desc: 'Past week' },
 			{ time: 60*60*24*30, desc: 'Past month' },
 			{ time: 60*60*24*365, desc: 'Past year' },
-			{ time: 60*60*24*365*100, desc: 'Older than a year' },
+			{ time: Infinity, desc: 'Older than a year' },
 		].filter( layer => layer.id || (layer.time >= lastVisit) );
 		
 		initLayout( ['manage', 'sites', 'misc'] );
@@ -1078,8 +1108,6 @@
 			} else placeholder(artist);
 		});
 		
-		
-		if ( roles.includes('dev') ) console.log('Starting watch: ', watch);
 		[...artists].reverse().forEach(sanitize);
 		if ( artists.length > 0 ) checkChanges().then(getPosts);
 	}
@@ -1100,31 +1128,33 @@
 	
 	
 	let initCount = [ 0, 0 ], galleryCache = { };
-	let initGalleryItem = (artist, info, resolve) => {
+	let initGalleryItem = (artist, info, resolve, counter) => {
 		if ( info ) {
+			//if ( info.min.t > 5 && (checkBl(info) || (info.swf && checkBl(info.swf))) ) placeholder(artist);
 			if ( info.swf ) swfRecord[artist] = info.swf;
 			galleryCache[artist] = info;
 			
 			// keep for 4x initial age of the post or 1 day, whichever is larger
 			if ( info.min.t < 5 && exp(info.stored, timeout.gallery) ) info.class = 'eabFade';   // do update
 			else if ( info.min.t > 5 && exp(info.stored, Math.max(timeout.gallery, (info.stored - info.min.t)*4/60)) ) info.class = 'eabFade';
-			else artists.splice(artists.indexOf(artist), 1);   // don't update   // alert - implement per-item cache expiry for gallery
+			else artists.splice(artists.indexOf(artist), 1);   // don't update
 			
 			placeItem( info.min.t, artist, info );
 			log.set('action', 'Cached results shown.');
 			
 		} else placeholder(artist);
 		
-		initCount[1]++;
-		if (initCount[0] === initCount[1]) resolve();
+		counter.n--;
+		if ( counter.n === 0 ) resolve();
 	};
 	
-	let handleStore = () => new Promise( resolve => {
-			initCount[0] = artists.length;
-			artists.forEach(artist => {
-				idbGet(artist).then(info => initGalleryItem(artist, info, resolve));
-			});
+	let handleStore = list => new Promise( resolve => {
+		let counter = { n: list.length };
+		
+		list.forEach(artist => {
+			idbGet(artist).then(info => initGalleryItem(artist, info, resolve, counter));
 		});
+	});
 	
 	async function initGallery() {
 		artists = [...lineArtists];
@@ -1137,7 +1167,7 @@
 		if (artists.length === 0) log.set('action', 'No results.');
 		
 		if ( !idb ) await idbPrep();
-		handleStore().then(getPosts);
+		handleStore(artists).then(getPosts);
 	}
 	
 	
@@ -1164,8 +1194,79 @@
 	}
 	
 	//}
+	// - - search            //{
+	let searchPage = 1;
+	function initSearch() {
+		searchOffsets = { perfect: 0, strong: 500, partial: 10000, alias: 20000 };
+		layers = [
+			{ time: searchOffsets.partial, desc: 'Complete match' },
+			{ time: searchOffsets.alias, desc: 'Partial match' },
+			{ time: Infinity, desc: 'Alias match' }
+		];
+		
+		initLayout( ['manage'] );
+		searchFor = searchParams['name'];
+		if ( !searchFor ) return log.set('action', 'Search for an artist below.');
+		
+		if ( searchFor.charAt(searchFor.length - 1) === '*' ) searchFor = searchFor.slice(0, -1);
+		if ( searchFor.charAt(0) === '*' ) searchFor = searchFor.substr(1);
+		
+		gallery.dataset.page = searchPage;
+		executeSearch();
+	}
 	
-	// - Formation - - - - - //
+	async function executeSearch() {
+		log.set('action', 'Searching...');
+		let data1 = await request('GET', '/tag/index.json', [`name=*${searchFor}*`, 'type=1', 'order=date', `page=${searchPage}`]).then(searchResults);
+		let data2 = await request('GET', '/artist/index.json', [`name=${searchFor}`, `page=${searchPage}`]).then(searchResults);
+		if ( searchPage === 1 && !searchProcess[searchFor] && domStatus.prevNext )  // alert - check this
+			await request('GET', '/tag/index.json', [`name=${searchFor}`, 'type=1']).then(searchResults);
+		
+		console.log(data1, data2);
+		
+		gallery.appendChild( prevNext(searchPage, Math.max(data1.length, data2.length) === 50) );
+		domStatus.prevNext = true;
+		
+		await getPosts();
+	}
+	
+	async function searchResults(data) {
+		let append = [ ], tags = data.map(a => a.name);
+		[...tags].reverse().forEach(sanitize);
+		
+		tags.forEach( name => {
+			if ( searchProcess[name] === undefined ) {
+				searchProcess[name] = true;
+				artists.push(name);
+				append.push(name);
+			}
+		} );
+		
+		searchFilter( 'perfect', entry => entry === searchFor );
+		searchFilter( 'strong', entry => entry.split(/(?:,|_|-)+/).includes(searchFor) );
+		searchFilter( 'alias', entry => !entry.includes(searchFor) );
+		searchFilter( 'partial', entry => true );
+		
+		if ( !idb ) await idbPrep();
+		await handleStore(append);
+		return Promise.resolve(data);
+	}
+	
+	//}
+	
+	// - Formation - - - - - //{
+	let checkBl = info => Object.keys(prefs.blacklist).some(blTags => {
+		let tags = info.tags.split(' ');
+		
+		if ( !prefs.blacklist[blTags].includes(info.rating) ) return false;
+		else return blTags.split(' ').every(tag => {
+			if ( tag.charAt(0) === '-' ) return ( !tags.includes(tag.substr(1)) );
+			else return ( tags.includes(tag) );
+		});
+	});
+	
+	
+	//}
 	// - - data search       //{
 	let permit = { }, find;
 	let postTime = (artist) => {
@@ -1178,8 +1279,10 @@
 	};
 	
 	function getPosts(lim = tagLim[host]) {
+		console.log(perf.req, perf.time/perf.req);
+		if ( domStatus.slow || (perf.req > 0 && perf.time/perf.req > slow.simplify) ) lim = slowMode();
 		if ( artists.length === 0 ) return;
-		if ( roles.includes('gallery') && lim === tagLim[host] ) lim--;   // make room for favcount
+		if ( ( roles.includes('gallery') || roles.includes('search') ) && lim === tagLim[host] ) lim--;   // make room for favcount
 		find = [ ];
 		
 		for ( s = 0; s < artists.length && s < lim; s++ ) {
@@ -1204,12 +1307,12 @@
 		}
 		
 		let tags = find.join(' ~');
-		if ( roles.includes('gallery') ) tags += ' order:favcount';
+		if ( roles.includes('gallery') || roles.includes('search') ) tags += ' order:favcount';
 		if ( find.length > 1 ) tags = `~${tags}&limit=${s*ppa}`;   // limit slows search down w/ 1 tag
 		
 		pLim = lim;
 		console.log('Searching: ', find);
-		request('GET', '/post/index.json', [`tags=${tags}`]).then(createGallery);
+		request('GET', '/post/index.json', [`tags=${tags}`]).then(createGallery, quitReq);
 		log.set('action', 'Requesting posts...');
 	}
 	
@@ -1223,32 +1326,16 @@
 		let info = distillItem(item, artist);
 		
 		// if another artist matches this post, run it again
-		if ( find.some( name => (name !== artist) && item.artist.includes(name) ) ) d--;  // alert - is this working?
+		if ( find.some( name => (name !== artist) && item.artist.includes(name) ) ) d--;
 		// stop if artists processed === artists searched
 		if ( p >= s && (!isNew(info.min.t) || roles.includes('gallery')) ) return d = 500;
 		
-		let itemTags = info.tags.split(' ');
-		let blacklisted = Object.keys(prefs.blacklist).some(blTags => {
-			if ( !prefs.blacklist[blTags].includes(info.rating) ) return false;
-			else return blTags.split(' ').every(tag => {
-				if ( tag.charAt(0) === '-' ) return ( !itemTags.includes(tag.substr(1)) );
-				else return ( itemTags.includes(tag) );
-			});
-		});
-		
-		if ( blacklisted ) return blRecord.push(info.min.i[2]);
+		if ( checkBl(info) ) return blRecord.push(info.min.i[2]);
 		if ( artist ) {
 			if ( roles.includes('gallery') && info.min.flash ) return swfRecord[artist] = swfRecord[artist] || info;
 			
 			p++;
 			find.splice(f, 1);
-			
-			
-			/*removeItem(artist);
-			placeItem(info.min.t, artist, info);
-			
-			if ( roles.includes('watchlist') ) prefs.watchlist[artist] = info.min
-			else if ( roles.includes('gallery') ) idbPut({ ...info, swf: swfRecord[artist] });*/
 			presentItem(info, artist);
 		}
 		
@@ -1273,10 +1360,10 @@
 		ncList = [];   // record in case we must add '+' to nc
 		for ( d = 0; d < data.length; d++ ) galleryItem( data[d], ( d === data.length - 1 ) );
 		
-		if (data.length === 0) {   // nothing found
+		if ( data.length === 0 ) {   // nothing found
 			missingItem('none', find[0]);
 			
-		} else if (p === 0) {   // something found, but nothing processed - either blacklisted or an alias
+		} else if ( p === 0 ) {   // something found, but nothing processed
 			if ( s > 1 ) retryCounter = pLim;   // try again, 1 at a time, for all parts of input
 			else if ( roles.includes('gallery') && swfRecord[find[0]] ) presentItem(swfRecord[find[0]], find[0]);
 			else missingItem('alias', find[0]);   // alert - but what if it's blacklisted? will be miscategorized
@@ -1285,6 +1372,7 @@
 		if ( retryCounter > 0 && artists.length > 0 ) getPosts(1);
 		else if ( artists.length > 0 ) getPosts();
 		else {
+			log.clear('slowMode');
 			if ( !roles.includes('watchlist') ) return log.set('action', 'Done!');
 			
 			if ( ncLog ) storage('eabNcLog', ncLog);
@@ -1314,9 +1402,9 @@
 	
 	
 	let newItemLinks = (artist, width, href, heart) => 
-		n.span({ class: 'post-score', ...width && { style: `width: ${width}` }, desc: [
+		n.span({ class: 'post-score eabArtist', ...width && { style: `width: ${width}` }, desc: [
 			heart,  n.a({ class: 'eabWiki', href: `/artist/show?name=${artist}`, text: '?' }),
-			n.a({ href, desc: [ n.span({ text: artist.replace(/_/g, ' '), title: artist }) ] })
+			n.a({ href, desc: n.span({ text: artist.replace(/_/g, ' '), title: artist }) })
 		] });
 	
 	
@@ -1360,7 +1448,7 @@
 				swfRecord[artist] && !info.min.flash && n.a({ href: `/post/show?md5=${swfRecord[artist].min.i[2]}`, class: 'eabSwfNotice', text: 'swf' }),
 				n.a({ ...md5 && { href: `/post/show?md5=${md5}` }, desc: [
 					n.img({ class: 'preview', alt, title: alt, width: `${dims[0]}px`, height: `${dims[1]}px`,
-					... !roles.includes('noImage') && { src: imHost + imSrc } })
+					...( !roles.includes('noImage') && imSrc ) && { src: imHost + imSrc } })
 				] }),
 				!( info.itemClass && info.itemClass === 'slave' ) && newItemLinks( artist, '', href, heart ),
 				dText && n.a({ href, class: 'post-score post-date', desc: dText })
@@ -1376,9 +1464,16 @@
 	
 	//}
 	// - - placement         //{
+	function normalSort(t) {
+		order.push(t);
+		order.sort( (a, b) => a - b );
+		return order.indexOf(t);
+	}
+	
 	let times = [ ], ncOffset = { }, order = [ ];
 	function placeItem(time, artist, info) {
 		let place, offset = 0;
+		
 		times.push(time);
 		times.sort().reverse();
 		place = times.indexOf(time);
@@ -1387,15 +1482,15 @@
 			sorted.splice(place, 0, artist);
 			for (let i = 0; i < place; i++) offset += ncOffset[sorted[i]] || 0;
 			
-		} else if ( roles.includes('gallery') && time > 5 ) {
-			order.push(lineArtists.indexOf(artist));
-			order.sort( (a, b) => a - b );
-			
-			place = order.indexOf(lineArtists.indexOf(artist));
+		} else if ( roles.includes('gallery') && time > 5 ) place = normalSort(lineArtists.indexOf(artist));
+		else if ( roles.includes('search') && time > 5 ) {
+			time = searchIndex[artist];
+			place = normalSort(time);
 		}
 		
 		let layer = timeLayers[time] || 0;
-		if ( !layer ) layers.forEach(a => { if (a.time && (now() - time) > a.time) layer++; });
+		if ( !roles.includes('search') && time > 5 ) time = now() - time;
+		if ( !layer ) layers.forEach(a => { if (a.time && time > a.time) layer++; });
 		
 		getId(`eabLayer${layer}`).style.display = 'block';
 		
@@ -1412,7 +1507,7 @@
 		removeItem(artist);
 		placeItem(t, artist, dInfo);
 		
-		if ( roles.includes('gallery') ) idbPut({ min, artist });
+		if ( roles.includes('gallery') || roles.includes('search') ) idbPut({ min, artist });
 		if ( roles.includes('watchlist') ) prefs.watchlist[artist] = min;
 	}
 	
@@ -1420,7 +1515,7 @@
 		removeItem(artist);
 		placeItem(info.min.t, artist, info);
 		
-		if ( roles.includes('gallery') ) idbPut({ ...info, swf: swfRecord[artist] });
+		if ( roles.includes('gallery') || roles.includes('search') ) idbPut({ ...info, swf: swfRecord[artist] });
 		if ( roles.includes('watchlist') ) prefs.watchlist[artist] = info.min;
 	}
 	
@@ -1433,7 +1528,7 @@
 		}
 		
 		let existing = getId(`ab-${artist}`);
-		if ( existing ) {   // alert - optimize this
+		if ( existing ) {   // alert - optimize this  // alert - problem with search in latter pages
 			// if we're surrounded by layer divs, this is the last item in the layer and it can be hidden
 			let last = ![existing.nextElementSibling.tagName, existing.previousElementSibling.tagName].includes('SPAN');
 			if (last) existing.previousElementSibling.style.display = 'none';
@@ -1530,7 +1625,7 @@
 	}
 	
 	async function fullSearch(artist, page) {
-		let data = await request('GET', '/post/index.json', [`tags=${artist}`, `page=${page}`]);
+		let data = await request('GET', '/post/index.json', [`tags=${artist}`, `page=${page}`]).catch(quitReq);
 		let clear = true;
 		
 		data.forEach(item => {
@@ -1574,7 +1669,7 @@
 			let page = paginator.getElementsByClassName('current')[0];
 			page = (page) ? page.innerHTML : '1';
 			
-			request('GET', '/post/index.json', [`tags=${searchTags}`, `page=${page}`]).then(favlist);
+			request('GET', '/post/index.json', [`tags=${searchTags}`, `page=${page}`]).then(favlist, quitReq);
 		}
 	}
 
@@ -1607,6 +1702,50 @@
 		for (let post of posts) {
 			post.lastElementChild.style.display = 'none';
 			post.children[post.children.length - 2].style.display = 'block';
+		}
+	}
+	
+	//}
+	// - - search            //{
+	let searchPages = { };
+	function switchSearchPage(page) {
+		if ( page === 0 ) return;
+		searchPage = page;
+		
+		searchPages[gallery.dataset.page] = {
+			gallery,
+		};
+		
+		postList.removeChild(gallery);
+		console.log(searchPages);
+		domStatus.prevNext = false;
+		
+		gallery = n.div({ class: 'content-post' })
+		postList.appendChild(gallery);
+		
+		populateGallery();
+		artists = [ ];  order = [ ];  times = [ ];
+		executeSearch();
+	}
+	
+	let prevNext = (curr, more) => {
+		let prev = { class: `prev_page ${curr === 1 ? 'disabled' : ''}`, href: voidUrl, text: '« Previous', onclick: () => switchSearchPage(curr - 1) };
+		let next = { class: `next_page ${!more ? 'disabled' : ''}`, href: voidUrl, text: 'Next »', onclick: () => switchSearchPage(curr + 1) };
+		prev = ( curr !== 1 ) ? n.a(prev) : n.span(prev);
+		next = ( more ) ? n.a(next) : n.span(next);
+		
+		return n.div({ id: 'paginator', desc: [ prev, next ] })
+	};
+	
+	let searchIndex = { }, searchProcess = { }, searchFor, searchOffsets;
+	function searchFilter(tier, filter) {
+		let list = Object.keys(searchProcess);
+		for ( let i = 0; i < list.length; i++ ) {
+			let entry = list[i];
+			if ( searchProcess[entry] === false || !filter(entry) ) continue;
+			searchProcess[entry] = false;
+			
+			searchIndex[entry] = searchOffsets[tier] + i + 10;
 		}
 	}
 	
@@ -1661,7 +1800,7 @@
 	
 	function eabCap() {
 		content.classList.add('eabCap');
-		log.notice('Watchlist cap of 400 reached.');
+		if ( !roles.includes('wiki') ) log.notice('Watchlist cap of 400 reached.');
 	}
 	
 	function heartToggle() {
@@ -1692,16 +1831,33 @@
 	
 	//}
 	// - - comms             //{
-	let setDesc = () => 'This private set contains your configuration of the \nArtist Watchlist script. It is used so your list can be\npermanently stored between sessions. If this set\nis tampered with, the script may malfunction.\n\n' + LZString.compressToUTF16(JSON.stringify(prefs));
+	let setDesc = () => 'This private set contains your configuration of the \nArtist Basis script. It is used so your list can be\npermanently stored between sessions. If this set\nis tampered with, the script may malfunction.\n\n' + LZString.compressToUTF16(JSON.stringify(prefs));
 	
+	function slowMode() {
+		if ( domStatus.slow ) return 1;
+		
+		domStatus.slow = true;
+		log.notice('Slow server response - trying simpler searches.', 'slowMode');
+		return 1;
+	}
+	
+	let perf = {
+		req: 0,
+		time: 0
+	};
+	
+	let quitReq = page => quit(`Server error: ${page.status} on ${page.responseURL}`);
 	let reqLog = { }, lastReq = 0;
 	async function request(method, url, data = []) {
+		let limited = url.includes('/post/index.json');
+		
 		// rate limiting
 		let wait = 500 - (Date.now() - lastReq);
 		if ( wait > 0 ) await timer(wait);
 		lastReq = Date.now();
 		
-		let form, agent = `Artist_Basis/${GM_info.script.version} (by index on e621)`;
+		
+		let form, agent = `Artist_Basis/${GM.info.script.version} (by index on e621)`;
 		if ( Array.isArray(data) ) {
 			form = null;
 			data.push(`_client=${agent}`);
@@ -1712,18 +1868,23 @@
 			for (let part in data) form.append(part, data[part]);
 		}
 		
-		if ( url.includes('/post/index.json') ) {   // alert - extend this
+		if ( limited ) {   // alert - extend this
 			if ( reqLog[url] ) quit(`Error: loop detected on query '${url}'`);
 			reqLog[url] = true;
 		}
 		
-		return new Promise( function(resolve, reject) {
+		
+		// performance monitor
+		let t = Date.now(), slowTimeout;
+		slowTimeout = setTimeout( () => log.notice('Slow server response, please wait...', 'waitSlow'), slow.warn);
+		
+		let result = await new Promise( function(resolve, reject) {
 			let page = new XMLHttpRequest();
 			xhr.push(page);
 			page.onreadystatechange = function() {
 				if ( page.readyState !== 4 ||  page.status === 0) return;
 				if ( page.status >= 200 && page.status < 300 ) resolve(page.response);
-				else quit(`Server error: ${page.status} on ${page.responseURL}`);
+				else reject(page);
 			};
 			
 			page.open(method, encodeURI(window.location.origin + url), true);
@@ -1731,10 +1892,20 @@
 			
 			page.send(form);
 		});
+		
+		if ( slowTimeout ) clearTimeout(slowTimeout);
+		log.clear('waitSlow');
+		
+		if ( limited ) {
+			perf.time += Date.now() - t;
+			perf.req++;
+		}
+		
+		return result;
 	}
 	
 	function eabRefresh() {
-		if (roles.includes('artistTags')) {
+		if ( roles.includes('artistTags') ) {
 			prefs = JSON.parse(storage('eabPrefs'));
 			
 			if (prefs) {
@@ -1750,37 +1921,30 @@
 		quit('Reloading');
 	}
 	
-	// check for more recent changes if preferences were recorded for this session more than x min ago
 	async function checkChanges() {
-		if ( exp(storage('eabTime'), timeout.storage) ) {   // ALERT
+		if ( exp(storage('eabTime'), timeout.storage) ) {
 			let eabPrefs = await getPrefs('Checking for changes...').then(handlePrefs);
-			let diff = assembleWatch(eabPrefs.watchlist).filter( name => watch.indexOf(name) < 0 );
-			
-			if ( diff.length > 0 /*|| eabPrefs.sites !== sites || eabPrefs.blacklist !== black */) return eabRefresh();
+			if ( eabPrefs.time[0] > prefs.time[0] ) return readyPrefs(eabPrefs).then(eabRefresh);
 		}
 		
 		return Promise.resolve();
 	}
-
+	
 	async function saveChanges() {
 		log.set('action', 'Saving watchlist...');
 		
 		let set = watch;
-		if ( roles.includes('watchlist') ) set =[ ...new Set([...sorted, ...watch]) ];
+		if ( roles.includes('watchlist') ) set = [ ...new Set([...sorted, ...watch]) ];
 		
 		// combine sorted and artists, remove duplicates and unfavorited
 		let list = set.filter( artist => !purge.includes(artist) );
 		prefs.watchlist = assembleCache(list, prefs.watchlist);
 		
-		await checkChanges();
 		let compressed = setDesc();
+		if ( compressed.length >= 9990 ) return log.notice(`Onsite storage limit exceeded: ${compressed.length}/9990`);
+		await checkChanges();
 		
-		console.log(compressed);
-		console.log(prefs);
-		console.log('Ending watch: ', list);
-		
-		await request('POST', '/set/update.json', { 'set[description]': compressed, 'set[id]': storage('eabSetId') });
-		
+		await request('POST', '/set/update.json', { 'set[description]': compressed, 'set[id]': storage('eabSetId') }).catch(quitReq);
 		storage('eabPrefs', prefs);
 		storage('eabTime', now());
 
@@ -1812,13 +1976,15 @@
 	let trans, store;
 	let idbGet = get => new Promise( function(resolve, reject) {
 		if ( !idb ) return resolve();
+		let req;
 		
-		if ( !store ) {
+		try {
+			req = store.get(get);
+		} catch(e) {
 			trans = idb.transaction('items', 'readonly');
 			store = trans.objectStore('items');
+			req = store.get(get);
 		}
-	
-		let req = store.get(get);
 		
 		req.onsuccess = function(event) {
 			resolve(req.result);
@@ -1827,7 +1993,7 @@
 	
 	let idbPut = put => new Promise( function(resolve, reject) {
 		if ( !idb ) resolve();
-		else resolve( idb.transaction('items', 'readwrite').objectStore('items').put(put) );
+		else resolve(/* idb.transaction('items', 'readwrite').objectStore('items').put(put) */);
 	});
 	
 	let idb = false, idbReq, idbPromise = false;
@@ -1835,7 +2001,6 @@
 		//indexedDB.deleteDatabase('eabGallery');
 		if ( !idbPromise ) idbPromise = new Promise( function(resolve, reject) {
 			idbReq = indexedDB.open('eabGallery', 1);
-			console.log(idbReq);
 			
 			idbReq.onupgradeneeded = event => {
 				let store = idbReq.result.createObjectStore('items', { keyPath: 'artist' });
@@ -1858,6 +2023,14 @@
 		return idbPromise;
 	}
 	
+	
+	function backup() {
+		if ( loggedIn ) getPrefs('Retrieving backup...').then( set => {
+			saveFile(set.description);
+			log.set('action', 'Backup retrieved.');
+		} );
+	}
+	
 	function saveFile(data) {
 		let blob = new Blob( [data], { type: 'text/plain;charset=utf-8' } );
 		let link = window.URL.createObjectURL(blob);
@@ -1871,20 +2044,25 @@
 	
 	//}
 	// - - startup           //{
-	if ( storage('eabUserName') !== cookie.login || storage('eabVersion') !== GM_info.script.version ) clearStorage();
+	if ( storage('eabUserName') !== cookie.login || storage('eabVersion') !== GM.info.script.version ) clearStorage();
 	storage('eabUserName', cookie.login);
-	storage('eabVersion', GM_info.script.version);
+	storage('eabVersion', GM.info.script.version);
+	
+	function retry() {
+		clearStorage();
+		eabRefresh();
+	}
 	
 	async function getPrefs(action) {
 		log.set('action', action);
 		let sets;
 		
 		// if we have the set id, get it directly
-		if (storage('eabSetId')) sets = await request('GET', '/set/show.json', [`id=${storage('eabSetId')}`]);
+		if (storage('eabSetId')) sets = await request('GET', '/set/show.json', [`id=${storage('eabSetId')}`]).catch(retry);
 		// else use post ID and refine with user ID
 		else {
-			if (!storage('eabUserId')) await request('GET', '/user/show.json').then( user => storage('eabUserId', user.id) );
-			sets = await request('GET', '/set/index.json', [`user_id=${storage('eabUserId')}`, 'post_id=65067']);
+			if (!storage('eabUserId')) await request('GET', '/user/show.json').then( user => storage('eabUserId', user.id), quitReq );
+			sets = await request('GET', '/set/index.json', [`user_id=${storage('eabUserId')}`, 'post_id=65067']).catch(quitReq);
 		}   // if the API sent the "private" key, it'd be possible to search with only post_id
 		
 		// check if it's artist_watchlist
@@ -1928,10 +2106,10 @@
 		let name = 'artist_watchlist__' + Math.random().toString(36).substr(2, 10);
 
 		let eabPrefs = { 'watchlist': [], 'blacklist': {}, 'time': [ now(), now() ], 'ver': storage('eabVersion'), 'sites': [ ] };
-		let create = await request('POST', '/set/create.json', { 'set[name]': name, 'set[shortname]': name, 'set[public]': 'false', 'set[description]': setDesc() });
+		let create = await request('POST', '/set/create.json', { 'set[name]': name, 'set[shortname]': name, 'set[public]': 'false', 'set[description]': setDesc() }).catch(quitReq);
 		
 		storage('eabSetId', create.set_id);
-		await request('POST', '/set/add_post.json', [`set_id=${storage('eabSetId')}`, 'post_id=65067']);
+		await request('POST', '/set/add_post.json', [`set_id=${storage('eabSetId')}`, 'post_id=65067']).catch(quitReq);
 		return Promise.resolve(eabPrefs);
 	} 
 	
