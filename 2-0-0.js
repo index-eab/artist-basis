@@ -20,8 +20,7 @@
 	
 	'use strict';
 	// todo:
-		// blacklist taking effect on gallery?
-		// check backward compatibility (check!) just try an older save from main account
+		// method to clear gallery cache
 	
 	// - General - - - - - - //{
 	let notArtists = [ 'unknown_artist','unknown_artist_signature','unknown_colorist','anonymous_artist','avoid_posting','conditional_dnp','sound_warning','epilepsy_warning' ];
@@ -92,6 +91,7 @@
 	function quit(msg) {
 		if ( log ) log.set('action', msg);
 		xhr.forEach( page => page.abort() );
+		if ( slowTimeout ) clearTimeout(slowTimeout);
 		throw new Error(msg);
 	}
 	
@@ -152,10 +152,11 @@
 	let e621 = ['e621.net', 'e926.net'].includes(host);
 	let paginator = getId('paginator');
 	
-	let cookie = { }, searchParams = { };
+	let cookie = { }, searchParams = { }, searchFor;
 	let deconstr = ( part, obj ) => obj[part.split('=')[0]] = part.split('=')[1];
 	document.cookie.split('; ').forEach(part => deconstr(part, cookie));
 	window.location.search.substr(1).split('&').forEach(part => deconstr(part, searchParams));
+	if ( searchParams.name ) searchFor = decodeURIComponent(searchParams.name);
 	
 	if (e621) sh = {
 		scheme   : () => getId('user_css').value,
@@ -212,7 +213,7 @@
 	if ( path.includes('basis') && path.includes('watchlist') ) roles.push('watchlist');
 	if ( path.includes('basis') && path.includes('help') ) roles.push('wiki', 'help');
 	if ( path.includes('basis') && path.includes('config') ) roles.push('wiki', 'config');
-	if ( path.includes('basis') && path.includes('search') ) roles.push('search');
+	if ( path.includes('basis') && path.includes('search') ) roles.push('gallery', 'search');
 	if ( artistTags.length > 0 ) roles.push('artistTags');
 	if ( mode ) roles.push('favlist');
 	
@@ -268,7 +269,7 @@
 	let color = (variant, opacity = '') => '#' + sub('text')[variant] + opacity;
 	let font = (def) => def + ( sub('tSizeAdjust') || 0 ) + 'pt';
 	
-	let eabWidth = 189, pWidthMin = 80, pPadding = 0.6;
+	let eabWidth = 189, pWidthMin = 80, pPadding = 0.6, rad = '5px';
 	let pWidth = (x) => `calc(${Math.max(x, pWidthMin)}px + ${2*pPadding}ex)`;
 	
 	let logosData = await GM.getResourceUrl('logos'), interfaceData = await GM.getResourceUrl('demo'), logos = { }, logosStyle = '';
@@ -278,295 +279,300 @@
 	for (let site in extSites) logosStyle += `.eabExt${site} { background-position: -${extSiteList.indexOf(site)*32}px }`;
 	
 	style = () => `
-		.eab input:disabled { background: #555;
-		} .eab { text-shadow: 0 0 3px ${color(2)};
-		} .eab #paginator { text-shadow: none;
-		} .eab:not(.favlist) { display: initial;
-		} .eab .sidebar::-webkit-scrollbar { display: none;
-		} .eabFade { opacity: 0.5;
-		} .eab ol, .eab ol li { margin-left: 0;
-		
-		} .eab:not(.favlist) .sidebar {
-			position: sticky;
-			top: 0;
-			padding-top: 1ex;
-			z-index: 100;
-		} .eab .sidebar > div {
-			margin: 0 0 2em
-		} .eab form table {
-			width: ${eabWidth}px;
-			padding: 0;
-		} .eab td {
-			padding: 0.5px 0;
-		} #eabSearch input, #eabSearch select {
-			float: right;
-			width: 80%;
-			margin: 0.5px 0;
-			top: 0;
-		} #eabSearch input[type="submit"] {
-			margin: 0.625ex 0;
-		} #eabSearch input:not([type="submit"]), #eabSearch select {
-			right: 1px;
-		} #eabSearch select {
-			width: calc(80% + 4px);
-			padding: 0;
-		} .eab input[type="submit"]:hover {
-			/*background: ${hsl(1, 100, -1/10)};*/
-			color: ${color(1)};
-		
-		
-		} .eabLayer, .eabLayer div {
-			font-size: ${font(10.5)};
-			border: 1px solid;
-			border-width: 1px 0 1px 1px;
-		} .eabLayer {
-			margin-top: 1.5em;
-			display: none;
-			border-image: linear-gradient(to right, rgba(0,0,0,0.5), rgba(0,0,0,0.3) 40%, rgba(0,0,0,0) 90%, rgba(0,0,0,0)) 1;
-		} .eabLayer > div {
-			padding: 0.2em 0.8em 0.3em;
-			background: linear-gradient(to right, ${hsl(3)}, ${hsl(3,80)} 40%, ${hsl(3,0)} 90%);
-			border-image: linear-gradient(to right, ${hsl(1)}, ${hsl(1,80)} 40%, ${hsl(1,0)} 90%) 1;
-		} .eab .content-post {
-			margin-top: -1.5em;
-		
-		} #content #tag-sidebar .eabHeart {
-			position: absolute;
-			left: -1em;
-			font-weight: normal !important;
-		} #content .eabHeart {
-			cursor: pointer;
-			color: #888;
-			text-shadow: -1px 0 #000, 0 1px #000, 1px 0 #000, 0 -1px #000;
-		} #content .eabFav {
-			color: #FF66A3;
-		} #content.eabCap .eabHeart:not(.eabFav) {
-			color: #444;
-			cursor: default;
-		
-		} .eab span.thumb {
-			height: inherit;
-			margin: 1em 0;
-		} .eab span.thumb a {
-			box-shadow: none;
-			display: block;
-		} .eab span.thumb a:first-child {
-			display: initial;
-		} .eab span.thumb > span {
-			position: relative;
-			display: block;
-			margin: auto;
-		} .eab img.preview {
-			/*border: 1px solid ${hsl(4)};*/
-			border: none;
-			border-radius: 4px 4px 0 0;
-			background: ${hsl(3)};
-			/*border-width: 1px 1px 0 1px;*/
-			box-shadow: 0 0 4px ${hsl(4)};
-			z-index: 1;
-			position: relative;
-		} .eab.highlight span.thumb {
-			opacity: 0.25;
-		} .eab span.thumb.slave {
-			opacity: 1;
-		
-		} .eab .post-score {
-			background-color: ${hsl(1)};
-			color: ${color(0)};
-			border-radius: 0;
-			display: block;
-			border: 1px solid ${hsl(4)};
-			border-width: 1px 1px 0;
-			font-size: ${font(10)};
-			z-index: 2;
-			position: relative;
-		} .favlist .eabGray {
-			color: ${color(1)};
-			cursor: default;
-			font-style: italic;
-		} .eab .post-score a, .eab .post-score a:hover {
-			color: ${color(0)};
-			display: block;
+		/*  general  */
+			.eab input:disabled { background: #555;
+			} .eab { text-shadow: 0 0 3px ${color(2)};
+			} .eab #paginator { text-shadow: none;
+			} .eab:not(.favlist) { display: initial;
+			} .eab .sidebar::-webkit-scrollbar { display: none;
+			} .eabFade { opacity: 0.5;
+			} .eab ol, .eab ol li { margin-left: 0;
 			
-		
-		} .eab .post-score .eabHeart, .eab .post-score .eabWiki, .eab .newCounter::before {
-			float: left;
-			width: 0;
-			transition: all 0.15s linear;
-			opacity: 0;
-		} .eab .newCounter::before {
-			overflow: hidden;
-			text-align: left;
-		} .eab .post-score .eabHeart, .eab .post-score .eabWiki {
-			font-size: 10pt;
-		} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki, .eab .thumb:hover .newCounter::before {
-			opacity: 1;
-		} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki, .eabArtist a:last-child span {
-			padding: 0 0.7ex;
-		} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki {
-			width: initial;
-			border-right: inherit;
-		} .eab .expand::before { content: 'expand ';
-		} .eab .collapse::before { content: 'collapse ';
-		} .eab .thumb:hover .expand::before { width: 7ch;
-		} .eab .thumb:hover .collapse::before { width: 9ch;
-		
-		} .eab .post-score:last-child, .eab .post-date {
-			border-radius: 0 0 4px 4px;
-			border-bottom-width: 1px;
-		} .eab .post-date {
-			background: ${hsl(2)};
-			font-size: ${font(7)};
-			line-height: 10pt;
-		} .post-date .eabFade {
-			padding-left: 0.5ex;
-		} .eab .eabArtist {
-			line-height: 1rem;
-		} .eab .newCounter, .eab .eabSwfNotice {
-			position: absolute;
-			/*top: -${pPadding}ex; */
-			top: calc(-${pPadding}ex - 1px);
-			right: 0;
-			z-index: 10;
-			border-radius: 0 4px;
-			font-family: courier;
-			font-size: 8pt;
-			line-height: 1.00;
-			padding: 0.6ex 0.8ex;
-			border: 1px solid ${hsl(4)};
-			background: ${hsl(1)};
-			cursor: pointer;
-		} .eab .eabSwfNotice, .eab .eabSwfNotice:hover {
-			color: ${color(0)};
-			left: 0;
-			right: initial;
-			border-radius: 4px 0;
-		
-		
-		} .eab.wiki img {
-			border-radius: 2px;
-			margin-left: 1em;
-		} .eab.wiki h5 {
-			margin-top: 1.5em;
-		} .eab textarea {
-			box-shadow: none;
-			width: ${eabWidth*2 - 4}px;
-			font-size: ${font(10)};
-		} .eab blockquote, .eab blockquote > p {
-			background: ${hsl(1)};
-		} .eab #help-sidebar li {
-			margin: 0;
-		
-		} #eabExternal {
-			min-height: 35px;
-		} #eabExternalPresets div {
-			display: inline-block;
-			width: 12em;
-			position: relative;
-			margin: 0.2ex;
-			border: 1px solid ${hsl(4)};
-			padding: 0 0 0 0.5ex;
-			border-radius: 2px;
-			cursor: pointer;
-		} #eabExternalPresets span {
-			position: absolute;
-			top: 50%;
-			transform: translateY(-50%);
-		} #eabExternalPresets a {
-			vertical-align: middle;
-		} #eabExternal a, #eabExternalPresets a {
-			display: inline-block;
-			width: 32px;
-			height: 32px;
-			${logos.base ? 'background-image: url('+logos.base+');' : ''}
-			background-size: auto 32px;
-			filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000) drop-shadow(0 0 2px ${hsl(2)});
-			margin-right: 0.5ex;
-		} ${logosStyle}
-		
-		#eabExternalPresets div, .eabSave, .eab.wiki img {
-			box-shadow: 0 0 4px ${hsl(3)};
-			border: 1px solid ${hsl(4)};
-			background: ${hsl(0)};
-			font-size: ${font(10)};
-		} .eab input, .eab select {
-			box-shadow: 0 0 4px ${hsl(4)};
-		} .eab input[type="submit"] {
-			/* box-shadow: 0 0 4px ${hsl(3, 100, -1/6)}; */ box-shadow: none;
-			/*background: ${hsl(1)};*/ background: none;
-			/*border: 1px solid ${hsl(4, 100, -1/5)};*/
-			margin: 0.75ex 0 0 !important;
-			text-shadow: 0 0 3px ${color(2)};
-		} .eabSave:not(.inactive):hover, #eabExternalPresets div:hover, .blItem:not(.demo) div:not(.blInput):not(.inactive):hover {  /* alert */
-			background: ${hsl(0, 100, -1/10)};
-		} .blItem div:not(.blInput).inactive, .eabSave.inactive {
-			color: ${color(0, 80)};
-			background: ${hsl(1)};
-			box-shadow: none;
+			} #content #tag-sidebar .eabHeart {
+				position: absolute;
+				left: -1em;
+				font-weight: normal !important;
+			} #content .eabHeart {
+				cursor: pointer;
+				color: #888;
+				text-shadow: -1px 0 #000, 0 1px #000, 1px 0 #000, 0 -1px #000;
+			} #content .eabFav {
+				color: #FF66A3;
+			} #content.eabCap .eabHeart:not(.eabFav) {
+				color: #444;
+				cursor: default;
+			} #paginator.eabWaiting a {
+				cursor: not-allowed;
 			
-		} #eabBlacklist {
-			margin: 2px 0 0 0 !important;
-			width: ${eabWidth*1.5}px;
-		} .blItem.demo {
-			width: ${eabWidth*1.25}px;
-		} .blItem {
-			list-style-type: none;
-			margin: 0;
-		} .blInput {
-			text-shadow: none;
-		} .blItem.demo * {
-			cursor: default !important;
-		} .eabSave, .eab input[type="submit"] {
-			cursor: pointer;
-			color: ${color(0)};
-			text-align: center;
-			border-radius: 4px;
-			width: ${eabWidth - 2}px !important;
-			padding: 0.1ex 0 0.2ex;
-			margin: 0.5ex 0;
-			line-height: 11.5pt;
-			font-family: verdana,sans-serif;
-			box-sizing: content-box;
-		} .blItem div:last-child {
-			width: auto;
-			border-left-width: 1px;
-			background: #FFF;
-			overflow: hidden;
-			color: #000;
-			padding-left: 2px;
-			white-space: nowrap;
-		} .blInput:focus {
-			background: #FFC;
-		} .blItem div:not(.blInput) {
-			cursor: pointer;
-			float: right;
-			color: ${color(0)};
-			width: 3ex;
-			text-align: center;
-		} .blItem div {
-			background: ${hsl(0)};
-			border: 1px solid ${hsl(4)};
-			border-width: 0 1px 1px 0;
-			vertical-align: bottom;
-			text-overflow: ellipsis;
-			position: relative;
-			z-index: 1000;
-			font-size: ${font(9)};
-			padding: 0.1ex 0 0.2ex;
-		} .eabSave.inactive {
-			cursor: default;
-		} .blItem:first-child div {
-			border-top-width: 1px;
-		} .blItem:first-child div:last-child { border-top-left-radius: 4px; }
-		.blItem:first-child div:first-child { border-top-right-radius: 4px; }
-		.blItem:last-child div:last-child { border-bottom-left-radius: 4px; }
-		.blItem:last-child div:first-child { border-bottom-right-radius: 4px; }
-		
-		.eabSave, .blItem div:not(.blInput), #eabExternalPresets div, .eabHeart {
-			-moz-user-select: none;
-			-webkit-user-select: none;
-			user-select: none;
-		}
+			
+		/*  sidebar  */
+			} .eab:not(.favlist) .sidebar {
+				position: sticky;
+				top: 0;
+				padding-top: 1ex;
+				z-index: 100;
+			} .eab .sidebar > div {
+				margin: 0 0 2em
+			} .eab form table {
+				width: ${eabWidth}px;
+				padding: 0;
+			} .eab td {
+				padding: 0.5px 0;
+			} .eab input, .eab select {
+				box-shadow: 0 0 4px ${hsl(4)};
+			} #eabSearch input, #eabSearch select {
+				float: right;
+				width: 80%;
+				margin: 0.5px 0;
+				top: 0;
+			} #eabSearch input[type="submit"] {
+				margin: 0.625ex 0;
+			} #eabSearch input:not([type="submit"]), #eabSearch select {
+				right: 1px;
+			} #eabSearch select {
+				width: calc(80% + 4px);
+				padding: 0;
+			} .eab input[type="submit"]:hover {
+				/*background: ${hsl(1, 100, -1/10)};*/
+				color: ${color(1)};
+			} .eabSearch input {
+				max-width: ${eabWidth - 6}px;
+				width: 100%;
+			
+			
+		/*  gallery  */
+			} .eabLayer, .eabLayer div {
+				font-size: ${font(10.5)};
+				border: 1px solid;
+				border-width: 1px 0 1px 1px;
+			} .eabLayer {
+				margin-top: 1.5em;
+				display: none;
+				border-image: linear-gradient(to right, rgba(0,0,0,0.5), rgba(0,0,0,0.3) 40%, rgba(0,0,0,0) 90%, rgba(0,0,0,0)) 1;
+			} .eabLayer > div {
+				padding: 0.2em 0.8em 0.3em;
+				background: linear-gradient(to right, ${hsl(3)}, ${hsl(3,80)} 40%, ${hsl(3,0)} 90%);
+				border-image: linear-gradient(to right, ${hsl(1)}, ${hsl(1,80)} 40%, ${hsl(1,0)} 90%) 1;
+			} .eab .content-post {
+				margin-top: -1.5em;
+			
+			} .eab span.thumb {
+				height: inherit;
+				margin: 1em 0;
+			} .eab img.preview {
+				border: none;
+				border-radius: ${rad} ${rad} 0 0;
+				background: ${hsl(3)};
+				box-shadow: 0 0 4px ${hsl(4)};
+			} .eab.highlight span.thumb {
+				opacity: 0.25;
+			} .eab span.thumb.slave {
+				opacity: 1;
+				
+			} .eab .thumb > span:not(.post-score) {
+				position: relative;
+				display: block;
+				margin: auto;
+			} .eab .eabArtist {
+				color: ${color(0)};
+				font-size: ${font(10)};
+				background-color: ${hsl(1)};
+				border: 1px solid ${hsl(4)};
+				border-radius: 0 0 ${rad} ${rad};
+				border-width: 0 1px 1px;
+				margin-left: -100%;
+				margin-right: -100%;
+				display: inline-block;
+				min-width: 100%;
+				max-width: 180px;
+				position: relative;
+				z-index: 2;
+				box-sizing: border-box;
+				line-height: 1rem;
+			} .eab .eabArtist > span, .eab .eabArtist > a {
+				border-top: 1px solid ${hsl(4)};
+			} .eab .eabArtist a {
+				display: block;
+			} .favlist .eabGray {
+				color: ${color(1)};
+				cursor: default;
+				font-style: italic;
+				width: 100%;
+				display: inline-block;
+			} .eab .post-score a, .eab .post-score a:hover {
+				color: ${color(0)};
+			} .eab .post-date {
+				background: ${hsl(2)};
+				font-size: ${font(7)};
+				line-height: 10pt;
+			} .post-date .eabFade {
+				padding-left: 0.5ex;
+				
+			} .eab .post-score .eabHeart, .eab .post-score .eabWiki, .eab .newCounter::before {
+				float: left;
+				width: 0;
+				transition: all 0.15s linear;
+				opacity: 0;
+			} .eab .newCounter::before {
+				overflow: hidden;
+				text-align: left;
+			} .eab .post-score .eabHeart, .eab .post-score .eabWiki {
+				font-size: 10pt;
+			} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki, .eab .thumb:hover .newCounter::before {
+				opacity: 1;
+			} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki, .eabArtist a span {
+				padding: 0 0.7ex;
+			} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki {
+				width: initial;
+				border-right: inherit;
+			} .eab .expand::before { content: 'expand ';
+			} .eab .collapse::before { content: 'collapse ';
+			} .eab .thumb:hover .expand::before { width: 7ch;
+			} .eab .thumb:hover .collapse::before { width: 9ch;
+			} .eab .newCounter, .eab .eabSwfNotice {
+				position: absolute;
+				top: calc(-${pPadding}ex - 1px);
+				right: 0;
+				z-index: 10;
+				border-radius: 0 ${rad};
+				font-family: courier;
+				font-size: 8pt;
+				line-height: 1.00;
+				padding: 0.6ex 0.8ex;
+				border: 1px solid ${hsl(4)};
+				background: ${hsl(1)};
+				cursor: pointer;
+			} .eab .eabSwfNotice, .eab .eabSwfNotice:hover {
+				color: ${color(0)};
+				left: 0;
+				right: initial;
+				border-radius: ${rad} 0;
+			
+			
+		/*  wiki/config  */
+			} .eab.wiki img {
+				border-radius: 2px;
+				margin-left: 1em;
+			} .eab.wiki h5 {
+				margin-top: 1.5em;
+			} .eab textarea {
+				box-shadow: none;
+				width: ${eabWidth*2 - 4}px;
+				font-size: ${font(10)};
+			} .eab blockquote, .eab blockquote > p {
+				background: ${hsl(1)};
+			} .eab #help-sidebar li {
+				margin: 0;
+			
+			} #eabExternal {
+				height: 32px;
+			} #eabExternalPresets div {
+				display: inline-block;
+				width: 12em;
+				position: relative;
+				margin: 0.2ex;
+				border: 1px solid ${hsl(4)};
+				padding: 0 0 0 0.5ex;
+				border-radius: 2px;
+				cursor: pointer;
+			} #eabExternalPresets span {
+				position: absolute;
+				top: 50%;
+				transform: translateY(-50%);
+			} #eabExternalPresets a {
+				vertical-align: middle;
+			} #eabExternal a, #eabExternalPresets a {
+				display: inline-block;
+				width: 32px;
+				height: 32px;
+				${logos.base ? 'background-image: url('+logos.base+');' : ''}
+				background-size: auto 32px;
+				filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000) drop-shadow(0 0 2px ${hsl(2)});
+				margin-right: 0.5ex;
+			} ${logosStyle}
+			
+			#eabExternalPresets div, .eabSave, .eab.wiki img {
+				box-shadow: 0 0 4px ${hsl(3)};
+				border: 1px solid ${hsl(4)};
+				background: ${hsl(0)};
+				font-size: ${font(10)};
+			} .eab input[type="submit"] {
+				/* box-shadow: 0 0 4px ${hsl(3, 100, -1/6)}; */ box-shadow: none;
+				/*background: ${hsl(1)};*/ background: none;
+				/*border: 1px solid ${hsl(4, 100, -1/5)};*/
+				margin: 0.75ex 0 0 !important;
+				text-shadow: 0 0 3px ${color(2)};
+			} .eabSave:not(.inactive):hover, #eabExternalPresets div:hover, .blItem:not(.demo) div:not(.blInput):not(.inactive):hover {  /* alert */
+				background: ${hsl(0, 100, -1/10)};
+			} .blItem div:not(.blInput).inactive, .eabSave.inactive {
+				color: ${color(0, 80)};
+				background: ${hsl(1)};
+				box-shadow: none;
+			} .eabSave, .eab input[type="submit"] {
+				cursor: pointer;
+				color: ${color(0)};
+				text-align: center;
+				border-radius: ${rad};
+				padding: 0.1ex 0 0.2ex;
+				margin: 0.5ex 0;
+				line-height: 11.5pt;
+				font-family: verdana,sans-serif;
+				box-sizing: content-box;
+			} .eabSave {
+				width: ${eabWidth - 2}px !important;
+			} .eabSave.inactive {
+				cursor: default;
+				
+			} #eabBlacklist {
+				margin: 2px 0 0 0 !important;
+				width: ${eabWidth*1.5}px;
+			} .blItem.demo {
+				width: ${eabWidth*1.25}px;
+			} .blItem {
+				list-style-type: none;
+				margin: 0;
+			} .blInput {
+				text-shadow: none;
+			} .blItem.demo * {
+				cursor: default !important;
+			} .blItem div:last-child {
+				width: auto;
+				border-left-width: 1px;
+				background: #FFF;
+				overflow: hidden;
+				color: #000;
+				padding-left: 2px;
+				white-space: nowrap;
+			} .blInput:focus {
+				background: #FFC;
+			} .blItem div:not(.blInput) {
+				cursor: pointer;
+				float: right;
+				color: ${color(0)};
+				width: 3ex;
+				text-align: center;
+			} .blItem div {
+				background: ${hsl(0)};
+				border: 1px solid ${hsl(4)};
+				border-width: 0 1px 1px 0;
+				vertical-align: bottom;
+				text-overflow: ellipsis;
+				position: relative;
+				z-index: 1000;
+				font-size: ${font(9)};
+				padding: 0.1ex 0 0.2ex;
+			} .blItem:first-child div {
+				border-top-width: 1px;
+			} .blItem:first-child div:last-child { border-top-left-radius: ${rad}; }
+			.blItem:first-child div:first-child { border-top-right-radius: ${rad}; }
+			.blItem:last-child div:last-child { border-bottom-left-radius: ${rad}; }
+			.blItem:last-child div:first-child { border-bottom-right-radius: ${rad}; }
+			
+			.eabSave, .blItem div:not(.blInput), #eabExternalPresets div, .eabHeart {
+				-moz-user-select: none;
+				-webkit-user-select: none;
+				user-select: none;
+			}
 	`;
 	
 	document.head.appendChild(styleElem = n.style({ text: style() }));
@@ -826,7 +832,7 @@
 		
 		prefs.blacklist = black;
 		saveChanges().then( () => {
-			storage('eabInvalidateCache', 'true');
+			storage('eabInvalidateCache', now());
 			saveCycle('inactive', 'blacklist', blSaveElem, blSave);
 			blReady = true;
 		} );
@@ -847,20 +853,22 @@
 	log = {
 		action : n.div({ text: 'Waiting...' }),
 		notice : (text, id) => {
-			if ( status ) status.insertBefore( n.div({ ...id && { id: `eabLog_${id}` }, style: 'margin-bottom: 1em', text: `Notice: ${text}` }), log.action );
+			if ( status ) status.insertBefore( n.div({ ...id && { id: `eabLog_${id}` }, style: 'margin-bottom: 1em', text }), log.action );
 		},
 		
 		clear : id => {
 			let del = getId(`eabLog_${id}`);
 			if ( del ) del.parentNode.removeChild(del);
-		},
-		set : (line, txt) => {
+		}, set : (line, txt) => {
 			if (log[line].textContent === txt) return;
 			log[line].textContent = txt;
 			if (roles.includes('dev')) console.log(`Log: ${txt}`);
-		},   ready : () => {
+		}, ready : () => {
 			log.set('action', 'Ready!');
 			log.action.appendChild( n.frag({ desc: [ n.text(' Click '), eabHeart('eabExample', ''), n.text(' anywhere on the site to add an artist.') ] }) );
+		}, done : message => {
+			log.clear('slowMode');
+			log.set('action', message || 'Done!');
 		}
 	};
 	
@@ -872,7 +880,7 @@
 	let layout = {
 		status : () => status = n.div({ desc: [
 			n.h4({ text: titles[ Object.keys(titles).find( page => roles.includes(page) ) ] }),
-			...roles.includes('gallery') || roles.includes('search') ? [
+			...roles.includes('gallery') ? [
 				galleryLink('galleryTag', { text: 'tags', href: '/tag?type=1&order=date&basis=true', style: 'display: inline-block; margin: 0 0 1.25ex 2ex;' }), middot(),
 				galleryLink('galleryWiki', { text: 'wikis', href: '/artist?basis=true' }), middot(),
 				galleryLink('search', { text: 'search', href: '/basis/search' })
@@ -880,11 +888,11 @@
 		] }),
 		
 		// Not here? Try <a>searching the Wiki Gallery</a>, which also scans aliases.
-		manage : () => n.div({ desc: [
+		manage : () => n.div({ class: 'eabSearch', desc: [
 			n.h5({ text: 'Find an artist' }),
 			n.form({ action: '/basis/search', method: 'get', desc: [
-				n.input({ style: `width:${eabWidth - 6}px`, name: 'name', type: 'text',
-				...( roles.includes('search') && searchParams.name ) && { value: searchParams.name } }),
+				n.input({ name: 'name', type: 'text',
+				...( roles.includes('search') && searchFor ) && { value: searchFor } }),
 				n.input({ type: 'submit', value: '[ search ]' }),
 			] })
 		] }),
@@ -929,7 +937,7 @@
 			n.div({ desc: [
 				n.a({ href: voidUrl, text: 'Clear cache', onclick: function() {
 					clearStorage();
-					storage('eabInvalidateCache', 'true');
+					storage('eabInvalidateCache', now());
 					eabRefresh();
 				} })
 			] })
@@ -998,22 +1006,23 @@
 		
 		if ( watch.length >= 400 ) eabCap();
 		
-		if ( roles.includes('gallery') ) initGallery();
+		if ( roles.includes('galleryTag') || roles.includes('galleryWiki') ) initGallery();
+		if ( roles.includes('search') ) initSearch();
 		if ( roles.includes('watchlist') ) initWatchlist();
 		if ( roles.includes('artistTags') ) initArtistTags();
 		if ( roles.includes('favlist') ) initFavlist();
 		if ( roles.includes('config') ) initConfig();
-		if ( roles.includes('search') ) initSearch();
 	}
 	
 	
-	let timeLayers = [ 'none', 'alias' ];
+	let timeLayers = [ 'none', 'alias', 'black' ];
 	function initLayout(parts) {
 		sidebar.appendChild( n.frag({ desc: parts.map( part => (typeof layout[part] === 'function') ? layout[part]() : layout[part] ) }) );
 		
 		layers = [   ...layers,
+			{ id: 'black', desc: `Blacklisted` },
 			{ id: 'alias', desc: `Can't identify artist`, append: help.span(`Possible causes:\n •  this is an alias\n •  name contains illegal characters\n •  tag type isn't "artist" and should be corrected`) },
-			{ id: 'none', desc: `No posts found`, append: help.span(`Possible causes:\n •  all posts blacklisted\n •  artist has gone DNP\n •  tag has been replaced, but an alias was not set up\n •  on e926 and no posts exist`) },
+			{ id: 'none', desc: `No posts found`, append: help.span(`Possible causes:\n •  artist has gone DNP\n •  tag has been replaced, but an alias was not set up\n •  on e926 and no posts exist`) },
 			{ id: 'waiting', desc: 'Waiting' }
 		];
 		
@@ -1057,10 +1066,10 @@
 	}
 	
 	let lineArtists;
-	if ( roles.includes('gallery') || roles.includes('watchlist') || roles.includes('search') ) {
+	if ( roles.includes('gallery') || roles.includes('watchlist') ) {
 		let frag = eabLayout();
 		
-		if ( roles.includes('gallery') ) prepGallery();
+		if ( roles.includes('galleryTag') || roles.includes('galleryWiki') ) prepGallery();
 		if ( paginator ) frag.appendChild(paginator);
 		
 		prepContent(frag);
@@ -1093,7 +1102,9 @@
 		
 		if ( watch.length === 0 ) log.ready();
 		else watch.forEach(artist => {
-			if ( prefs.watchlist[artist].i && !storage('eabInvalidateCache') ) {
+			if ( ( storage('eabInvalidateCache') && storage('eabInvalidateCache') > prefs.time[0] )
+				|| !prefs.watchlist[artist].i )   placeholder(artist);
+			else {
 				let info = { min: prefs.watchlist[artist] };
 				
 				if ( Array.isArray(info.min.t) ) info.min.t = info.min.t[0];  // backwards compatibility: pre-1.4
@@ -1105,11 +1116,18 @@
 				placeItem( info.min.t, artist, info );
 				if ( cooldown && isNew(info.min.t) && ncLog[artist] ) ncDisp(artist);
 				log.set('action', 'Cached results shown.');
-			} else placeholder(artist);
+			}
 		});
 		
 		[...artists].reverse().forEach(sanitize);
-		if ( artists.length > 0 ) checkChanges().then(getPosts);
+		if ( artists.length === 0 ) return;
+		
+		await checkChanges();
+		getPosts( tagLim[host], () => {
+			if ( ncLog ) storage('eabNcLog', ncLog);
+			if ( !cooldown ) prefs.time = [ now(), prefs.time[0] ];
+			saveChanges();
+		} );
 	}
 	
 	
@@ -1127,19 +1145,22 @@
 	}
 	
 	
-	let initCount = [ 0, 0 ], galleryCache = { };
+	let galleryCache = { };
 	let initGalleryItem = (artist, info, resolve, counter) => {
 		if ( info ) {
-			//if ( info.min.t > 5 && (checkBl(info) || (info.swf && checkBl(info.swf))) ) placeholder(artist);
-			if ( info.swf ) swfRecord[artist] = info.swf;
+			if ( info.swf && !checkBl(info.swf) ) swfRecord[artist] = info.swf;   // alert - is this working?
 			galleryCache[artist] = info;
 			
 			// keep for 4x initial age of the post or 1 day, whichever is larger
-			if ( info.min.t < 5 && exp(info.stored, timeout.gallery) ) info.class = 'eabFade';   // do update
-			else if ( info.min.t > 5 && exp(info.stored, Math.max(timeout.gallery, (info.stored - info.min.t)*4/60)) ) info.class = 'eabFade';
+			let expCond = [ timeout.gallery, ...(info.min.t > 5) ? [(info.stored - info.min.t)*4/60] : [] ];
+			let invalidate = (info.min.t === timeLayers.indexOf('black')) && (storage('eabInvalidateCache') || 0) > info.stored;
+			let blacklisted = info.min.t > 5 && ( checkBl(info) || (info.swf && checkBl(info.swf)) );
+			
+			if ( blacklisted || invalidate || exp(info.stored, Math.max(...expCond)) ) info.itemClass = 'eabFade';   // do update
 			else artists.splice(artists.indexOf(artist), 1);   // don't update
 			
-			placeItem( info.min.t, artist, info );
+			if ( info.itemClass === 'eabFade' ) placeholder(artist);
+			else placeItem( info.min.t, artist, info );
 			log.set('action', 'Cached results shown.');
 			
 		} else placeholder(artist);
@@ -1149,6 +1170,7 @@
 	};
 	
 	let handleStore = list => new Promise( resolve => {
+		if ( list.length === 0 ) return resolve();
 		let counter = { n: list.length };
 		
 		list.forEach(artist => {
@@ -1167,7 +1189,8 @@
 		if (artists.length === 0) log.set('action', 'No results.');
 		
 		if ( !idb ) await idbPrep();
-		handleStore(artists).then(getPosts);
+		await handleStore(artists);
+		getPosts( tagLim[host], () => log.done() );
 	}
 	
 	
@@ -1205,7 +1228,6 @@
 		];
 		
 		initLayout( ['manage'] );
-		searchFor = searchParams['name'];
 		if ( !searchFor ) return log.set('action', 'Search for an artist below.');
 		
 		if ( searchFor.charAt(searchFor.length - 1) === '*' ) searchFor = searchFor.slice(0, -1);
@@ -1216,18 +1238,24 @@
 	}
 	
 	async function executeSearch() {
+		if ( !searchPages[searchPage] ) searchPages[searchPage] = true;
+		
 		log.set('action', 'Searching...');
 		let data1 = await request('GET', '/tag/index.json', [`name=*${searchFor}*`, 'type=1', 'order=date', `page=${searchPage}`]).then(searchResults);
 		let data2 = await request('GET', '/artist/index.json', [`name=${searchFor}`, `page=${searchPage}`]).then(searchResults);
 		if ( searchPage === 1 && !searchProcess[searchFor] && domStatus.prevNext )  // alert - check this
 			await request('GET', '/tag/index.json', [`name=${searchFor}`, 'type=1']).then(searchResults);
 		
-		console.log(data1, data2);
+		if ( data1.length + data2.length === 0 ) return log.set('action', 'No results found.');
 		
 		gallery.appendChild( prevNext(searchPage, Math.max(data1.length, data2.length) === 50) );
 		domStatus.prevNext = true;
 		
-		await getPosts();
+		getPosts( tagLim[host], () => {
+			log.done();
+			searchWaiting = false;
+			paginator.classList.remove('eabWaiting');
+		} );
 	}
 	
 	async function searchResults(data) {
@@ -1243,7 +1271,7 @@
 		} );
 		
 		searchFilter( 'perfect', entry => entry === searchFor );
-		searchFilter( 'strong', entry => entry.split(/(?:,|_|-)+/).includes(searchFor) );
+		searchFilter( 'strong', entry => entry.split(/(?:,|_|-|\)|\(|\:)+/).includes(searchFor) );
 		searchFilter( 'alias', entry => !entry.includes(searchFor) );
 		searchFilter( 'partial', entry => true );
 		
@@ -1278,11 +1306,13 @@
 		if ( forbidden.start.includes(artist.charAt(0)) || forbidden.any.some(ch => artist.includes(ch)) ) missingItem('alias', artist);
 	};
 	
-	function getPosts(lim = tagLim[host]) {
-		console.log(perf.req, perf.time/perf.req);
+	let eabGet = new CustomEvent('eabGet');
+	function getPosts(lim = tagLim[host], callback = false) {
+		if ( callback ) document.addEventListener('eabGet', callback);
+		if ( artists.length === 0 ) return document.dispatchEvent(eabGet);
+		
 		if ( domStatus.slow || (perf.req > 0 && perf.time/perf.req > slow.simplify) ) lim = slowMode();
-		if ( artists.length === 0 ) return;
-		if ( ( roles.includes('gallery') || roles.includes('search') ) && lim === tagLim[host] ) lim--;   // make room for favcount
+		if ( roles.includes('gallery') && lim === tagLim[host] ) lim--;   // make room for favcount
 		find = [ ];
 		
 		for ( s = 0; s < artists.length && s < lim; s++ ) {
@@ -1307,7 +1337,7 @@
 		}
 		
 		let tags = find.join(' ~');
-		if ( roles.includes('gallery') || roles.includes('search') ) tags += ' order:favcount';
+		if ( roles.includes('gallery') ) tags += ' order:favcount';
 		if ( find.length > 1 ) tags = `~${tags}&limit=${s*ppa}`;   // limit slows search down w/ 1 tag
 		
 		pLim = lim;
@@ -1319,7 +1349,7 @@
 	
 	//}
 	// - - data handling     //{
-	let retryCounter = 0, blRecord = [ ], swfRecord = { }, pLim, s, ncList, p, d;
+	let retryCounter = 0, blRecord = { }, swfRecord = { }, pLim, s, ncList, p, d;
 	async function galleryItem(item, last) {
 		let artist, f = find.findIndex(name => item.artist.includes(name));
 		if ( f > -1 ) artist = find[f];
@@ -1330,7 +1360,12 @@
 		// stop if artists processed === artists searched
 		if ( p >= s && (!isNew(info.min.t) || roles.includes('gallery')) ) return d = 500;
 		
-		if ( checkBl(info) ) return blRecord.push(info.min.i[2]);
+		if ( checkBl(info) ) {
+			if ( !blRecord[artist] ) blRecord[artist] = [ info.min.i[2] ];
+			else if ( !blRecord[artist].includes(info.min.i[2]) ) blRecord[artist].push(info.min.i[2]);
+			return;
+		}
+		
 		if ( artist ) {
 			if ( roles.includes('gallery') && info.min.flash ) return swfRecord[artist] = swfRecord[artist] || info;
 			
@@ -1366,20 +1401,11 @@
 		} else if ( p === 0 ) {   // something found, but nothing processed
 			if ( s > 1 ) retryCounter = pLim;   // try again, 1 at a time, for all parts of input
 			else if ( roles.includes('gallery') && swfRecord[find[0]] ) presentItem(swfRecord[find[0]], find[0]);
-			else missingItem('alias', find[0]);   // alert - but what if it's blacklisted? will be miscategorized
+			else if ( blRecord[find[0]] ) missingItem('black', find[0]);
+			else missingItem('alias', find[0]);
 		}
 		
-		if ( retryCounter > 0 && artists.length > 0 ) getPosts(1);
-		else if ( artists.length > 0 ) getPosts();
-		else {
-			log.clear('slowMode');
-			if ( !roles.includes('watchlist') ) return log.set('action', 'Done!');
-			
-			if ( ncLog ) storage('eabNcLog', ncLog);
-			if ( !cooldown ) prefs.time = [ now(), prefs.time[0] ];
-			
-			saveChanges();
-		}
+		getPosts( (retryCounter > 0) ? 1 : tagLim[host] );
 	}
 	
 	
@@ -1400,30 +1426,28 @@
 		return info;
 	}
 	
-	
-	let newItemLinks = (artist, width, href, heart) => 
-		n.span({ class: 'post-score eabArtist', ...width && { style: `width: ${width}` }, desc: [
-			heart,  n.a({ class: 'eabWiki', href: `/artist/show?name=${artist}`, text: '?' }),
-			n.a({ href, desc: n.span({ text: artist.replace(/_/g, ' '), title: artist }) })
-		] });
-	
+
+	let newItemLinks = (artist, href, heart) => [
+		heart,  n.a({ class: 'eabWiki', href: `/artist/show?name=${artist}`, text: '?' }),
+		n.a({ href, desc: n.span({ text: artist.replace(/_/g, ' '), title: artist }) }),
+	];
 	
 	let months = [ 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ];
 	let imHost = `${window.location.protocol}//static1.${window.location.host}/`;
 	function newItem(artist, info) {
 		let imSrc, md5 = info.min.i[2] || false;
 		
-		if (!md5) imSrc = '';
-		else if (md5.length === 32) {
-			if (blRecord.includes(md5)) imSrc = '/images/blacklisted-preview.png';
-			else if (info.min.flash) imSrc = 'images/download-preview.png';
+		if ( !md5 ) imSrc = '';
+		else if ( md5.length === 32 ) {
+			if ( blRecord[artist] && blRecord[artist].includes(md5) ) imSrc = '/images/blacklisted-preview.png';
+			else if ( info.min.flash ) imSrc = 'images/download-preview.png';
 			else imSrc = `data/preview/${md5.substring(0,2)}/${md5.substring(2,4)}/${md5}.jpg`;
 		
 		// backward compatibility: pre-1.4
-		} else if (md5.includes('download-preview.png')) {
+		} else if ( md5.includes('download-preview.png') ) {
 			imSrc = 'images/download-preview.png';
 			md5 = false;
-		} else if (md5.includes('/')) {
+		} else if ( md5.includes('/') ) {
 			imSrc = `data/preview/${md5}`;
 			md5 = md5.split('/').pop().replace('.jpg', '');
 		}
@@ -1432,7 +1456,7 @@
 		if ( roles.includes('gallery') ) href += ` order:favcount`;
 		
 		let alt = '';
-		if (info.tags) alt = `${info.tags} \n\nArtist tags: ${info.artistTags.join(', ')} \nRating: ${{'s':'Safe','q':'Questionable','e':'Explicit'}[info.rating]} \nScore: ${info.score} \nFaves: ${info.fav_count}`;
+		if ( info.tags ) alt = `${info.tags} \n\nArtist tags: ${info.artistTags.join(', ')} \nRating: ${{'s':'Safe','q':'Questionable','e':'Explicit'}[info.rating]} \nScore: ${info.score} \nFaves: ${info.fav_count}`;
 		
 		let dText = false;
 		if ( info.min.t > 5 && roles.includes('watchlist') ) {
@@ -1440,7 +1464,7 @@
 			dText = [ n.text(`${('0' + date.getDate()).slice(-2)} ${months[date.getMonth()]} `), n.span({ class: 'eabFade', text: date.getFullYear() }) ];
 		}
 		
-		let dims = (blRecord.includes(md5)) ? dInfo.min.i : info.min.i;
+		let dims = ( blRecord[artist] && blRecord[artist].includes(md5) ) ? dInfo.min.i : info.min.i;  // alert - ensure this shit is working
 		let heart = ( info.min.t < 5 && !watch.includes(artist) ) ? false : eabHeart(artist, 'heart');
 		
 		return n.span({ id: info.itemId || `ab-${artist}`, class: `thumb ${info.itemClass || ''}`, 'data-time': info.min.t, desc:
@@ -1448,10 +1472,13 @@
 				swfRecord[artist] && !info.min.flash && n.a({ href: `/post/show?md5=${swfRecord[artist].min.i[2]}`, class: 'eabSwfNotice', text: 'swf' }),
 				n.a({ ...md5 && { href: `/post/show?md5=${md5}` }, desc: [
 					n.img({ class: 'preview', alt, title: alt, width: `${dims[0]}px`, height: `${dims[1]}px`,
-					...( !roles.includes('noImage') && imSrc ) && { src: imHost + imSrc } })
+						...( !roles.includes('noImage') && imSrc ) && { src: imHost + imSrc } })
 				] }),
-				!( info.itemClass && info.itemClass === 'slave' ) && newItemLinks( artist, '', href, heart ),
-				dText && n.a({ href, class: 'post-score post-date', desc: dText })
+				
+				n.span({ class: 'post-score eabArtist', desc: [
+					!( info.itemClass && info.itemClass === 'slave' ) && newItemLinks( artist, href, heart ),
+					dText && n.a({ href, class: 'post-date', desc: dText })
+				].flat() })
 			] })
 		});
 	}
@@ -1467,26 +1494,28 @@
 	function normalSort(t) {
 		order.push(t);
 		order.sort( (a, b) => a - b );
+		return order.filter( a => a > 5 ).indexOf(t);
+	}
+	
+	function revSort(t) {
+		order.push(t);
+		order.sort( (a, b) => a - b ).reverse();
 		return order.indexOf(t);
 	}
 	
-	let times = [ ], ncOffset = { }, order = [ ];
+	let ncOffset = { }, order = [ ];
 	function placeItem(time, artist, info) {
 		let place, offset = 0;
 		
-		times.push(time);
-		times.sort().reverse();
-		place = times.indexOf(time);
-		
-		if ( roles.includes('watchlist') ) {
-			sorted.splice(place, 0, artist);
-			for (let i = 0; i < place; i++) offset += ncOffset[sorted[i]] || 0;
-			
-		} else if ( roles.includes('gallery') && time > 5 ) place = normalSort(lineArtists.indexOf(artist));
-		else if ( roles.includes('search') && time > 5 ) {
+		if ( roles.includes('watchlist') || time < 5 ) place = revSort(time);
+		else if ( roles.includes('galleryTag') || roles.includes('galleryWiki') ) place = normalSort(lineArtists.indexOf(artist) + 10);
+		else if ( roles.includes('search') ) {
 			time = searchIndex[artist];
 			place = normalSort(time);
 		}
+		
+		sorted.splice(place, 0, artist);
+		for (let i = 0; i < place; i++) offset += ncOffset[sorted[i]] || 0;
 		
 		let layer = timeLayers[time] || 0;
 		if ( !roles.includes('search') && time > 5 ) time = now() - time;
@@ -1507,7 +1536,7 @@
 		removeItem(artist);
 		placeItem(t, artist, dInfo);
 		
-		if ( roles.includes('gallery') || roles.includes('search') ) idbPut({ min, artist });
+		if ( roles.includes('gallery') ) idbPut({ min, artist, stored: now() });
 		if ( roles.includes('watchlist') ) prefs.watchlist[artist] = min;
 	}
 	
@@ -1515,16 +1544,17 @@
 		removeItem(artist);
 		placeItem(info.min.t, artist, info);
 		
-		if ( roles.includes('gallery') || roles.includes('search') ) idbPut({ ...info, swf: swfRecord[artist] });
+		if ( roles.includes('gallery') || roles.includes('search') ) idbPut({ ...info, ...swfRecord[artist] && { swf: swfRecord[artist] } });
 		if ( roles.includes('watchlist') ) prefs.watchlist[artist] = info.min;
 	}
 	
 	function removeItem(artist) {  // check not involved with gallery
 		if ( artists.includes(artist) ) artists.splice(artists.indexOf(artist), 1);
+		
 		let prior = sorted.indexOf(artist);
 		if ( prior > -1 ) {
 			sorted.splice(prior, 1);
-			times.splice(prior, 1);
+			order.splice(prior, 1);
 		}
 		
 		let existing = getId(`ab-${artist}`);
@@ -1687,11 +1717,13 @@
 			postCont.lastChild.style.display = 'none';
 			post.style.width = pWidth(item.preview_width);
 
-			item.artist.forEach(artist => {
-				if ( !notArtists.includes(artist) ) postCont.appendChild( newItemLinks(artist, pWidth(item.preview_width), `/post?tags=${artist}`, eabHeart(artist, item.id)) );
-			});
+			let list = item.artist.filter( tag => !notArtists.includes(tag) );
+			let links = n.span({ class: 'post-score eabArtist', style: `min-width: ${pWidth(item.preview_width)}`, desc: list.map(
+				artist => n.frag({ desc: newItemLinks(artist, `/post?tags=${artist}`, eabHeart(artist, item.id)) })
+			) });
+			if ( list.length === 0 ) links.appendChild(n.span({ class: 'eabGray', text: 'unknown' }));
+			postCont.appendChild(links);
 
-			if (postCont.childElementCount === 2) postCont.appendChild(n.span({ style: `width: ${pWidth(item.preview_width)}`, class: 'post-score eabGray', text: 'unknown' }));
 		});
 	}
 	
@@ -1707,37 +1739,48 @@
 	
 	//}
 	// - - search            //{
-	let searchPages = { };
+	let searchPages = [ false ], searchWaiting = true;
 	function switchSearchPage(page) {
-		if ( page === 0 ) return;
+		if ( searchWaiting ) return;
 		searchPage = page;
-		
-		searchPages[gallery.dataset.page] = {
-			gallery,
-		};
-		
+		searchPages[gallery.dataset.page] = gallery;
 		postList.removeChild(gallery);
-		console.log(searchPages);
-		domStatus.prevNext = false;
 		
-		gallery = n.div({ class: 'content-post' })
+		if ( searchPages[page] ) {
+			gallery = searchPages[page];
+			let repl = getCss('#paginator', gallery)[0];
+			repl.parentNode.replaceChild( prevNext(page, searchPages[page+1]), repl );
+		} else gallery = n.div({ class: 'content-post', 'data-page': searchPage });
+		
 		postList.appendChild(gallery);
+		if ( searchPages[page] ) return;
 		
+		domStatus.prevNext = false;
 		populateGallery();
-		artists = [ ];  order = [ ];  times = [ ];
+		artists = [ ];  order = [ ];
 		executeSearch();
 	}
 	
+	let searchPageLinks = curr => searchPages.map( (elem, page) => {
+		if ( elem ) return n.frag({ desc: [
+			(page === curr) && n.span({ class: 'current', text: page }),
+			(page !== curr) && n.a({ href: voidUrl, text: page, rel: (page > curr) ? 'next' : 'prev', onclick: () => switchSearchPage(page) }),
+			n.text(' ')
+		] })
+	} );
+	
 	let prevNext = (curr, more) => {
-		let prev = { class: `prev_page ${curr === 1 ? 'disabled' : ''}`, href: voidUrl, text: '« Previous', onclick: () => switchSearchPage(curr - 1) };
-		let next = { class: `next_page ${!more ? 'disabled' : ''}`, href: voidUrl, text: 'Next »', onclick: () => switchSearchPage(curr + 1) };
-		prev = ( curr !== 1 ) ? n.a(prev) : n.span(prev);
+		let prev = { class: `prev_page ${ curr > 1 ? '' : 'disabled' }`, href: voidUrl, text: '« Previous', ...(curr > 1) && { onclick: () => switchSearchPage(curr - 1) } };
+		let next = { class: `next_page ${ more ? '' : 'disabled' }`, href: voidUrl, text: 'Next »', ...more && { onclick: () => switchSearchPage(curr + 1) } };
+		
+		prev = ( curr > 1 ) ? n.a(prev) : n.span(prev);
 		next = ( more ) ? n.a(next) : n.span(next);
 		
-		return n.div({ id: 'paginator', desc: [ prev, next ] })
+		paginator = n.div({ id: 'paginator', ...searchWaiting && { class: 'eabWaiting' }, desc: [ prev, n.text(' '), ...searchPageLinks(curr), next ] });
+		return paginator;
 	};
 	
-	let searchIndex = { }, searchProcess = { }, searchFor, searchOffsets;
+	let searchIndex = { }, searchProcess = { }, searchOffsets;
 	function searchFilter(tier, filter) {
 		let list = Object.keys(searchProcess);
 		for ( let i = 0; i < list.length; i++ ) {
@@ -1818,7 +1861,7 @@
 		
 		// if it's already been rendered and sorted, leave it alone for now, but don't save it later
 		if ( purge.includes(artist) ) purge.splice(purge.indexOf(artist), 1);
-		else if ( sorted.includes(artist) ) purge.splice(0, 0, artist);
+		else if ( roles.includes('watchlist') && sorted.includes(artist) ) purge.splice(0, 0, artist);
 		
 		directory[artist].forEach(id => { getId(id).className = heartClass(artist) + ' eabFade'; });
 		
@@ -1847,7 +1890,7 @@
 	};
 	
 	let quitReq = page => quit(`Server error: ${page.status} on ${page.responseURL}`);
-	let reqLog = { }, lastReq = 0;
+	let reqLog = { }, lastReq = 0, slowTimeout;
 	async function request(method, url, data = []) {
 		let limited = url.includes('/post/index.json');
 		
@@ -1875,7 +1918,7 @@
 		
 		
 		// performance monitor
-		let t = Date.now(), slowTimeout;
+		let t = Date.now();
 		slowTimeout = setTimeout( () => log.notice('Slow server response, please wait...', 'waitSlow'), slow.warn);
 		
 		let result = await new Promise( function(resolve, reject) {
@@ -1947,9 +1990,8 @@
 		await request('POST', '/set/update.json', { 'set[description]': compressed, 'set[id]': storage('eabSetId') }).catch(quitReq);
 		storage('eabPrefs', prefs);
 		storage('eabTime', now());
-
-		if ( storage('eabInvalidateCache') ) localStorage.removeItem('eabInvalidateCache');
-		log.set('action', 'Done!');
+		
+		log.done();
 		return Promise.resolve();
 	}
 	
@@ -1973,27 +2015,23 @@
 		});
 	}
 	
-	let trans, store;
-	let idbGet = get => new Promise( function(resolve, reject) {
+	let store, idbGet = get => new Promise( function(resolve, reject) {
 		if ( !idb ) return resolve();
 		let req;
 		
-		try {
+		try {   // transaction might be dead, have to test
 			req = store.get(get);
 		} catch(e) {
-			trans = idb.transaction('items', 'readonly');
-			store = trans.objectStore('items');
+			store = idb.transaction('items', 'readonly').objectStore('items');
 			req = store.get(get);
 		}
 		
-		req.onsuccess = function(event) {
-			resolve(req.result);
-		};
+		req.onsuccess = event => resolve(req.result);
 	});
 	
 	let idbPut = put => new Promise( function(resolve, reject) {
 		if ( !idb ) resolve();
-		else resolve(/* idb.transaction('items', 'readwrite').objectStore('items').put(put) */);
+		else resolve( idb.transaction('items', 'readwrite').objectStore('items').put(put) );
 	});
 	
 	let idb = false, idbReq, idbPromise = false;
@@ -2001,21 +2039,12 @@
 		//indexedDB.deleteDatabase('eabGallery');
 		if ( !idbPromise ) idbPromise = new Promise( function(resolve, reject) {
 			idbReq = indexedDB.open('eabGallery', 1);
-			
-			idbReq.onupgradeneeded = event => {
-				let store = idbReq.result.createObjectStore('items', { keyPath: 'artist' });
-			//	store.createIndex('by_artist', 'artist', { unique: true });
-			};
-			
-			idbReq.onerror = event => {
-				log.notice('Cache failed, likely a Firefox private browsing bug.');
-				resolve();
-			};
+			idbReq.onupgradeneeded = event => { idbReq.result.createObjectStore('items', { keyPath: 'artist' }); };
+			idbReq.onerror = event => resolve( log.notice('Cache failed, likely a Firefox private browsing bug.') );
 			
 			idbReq.onsuccess = event => {
 				idb = idbReq.result;
 				idb.onerror = event => quit(`indexedDB error: ${event.target.error}`);
-			//	idbTrans = idb.transaction('items', 'readwrite');
 				resolve();
 			};
 		});
