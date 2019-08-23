@@ -2,7 +2,7 @@
 // @name         Artist Watchlist
 // @description  Follow posts from your favorite artists!
 // @namespace    https://e621.net/artist/watchlist
-// @version      2.0.0
+// @version      1.4.0
 // @author       index
 // @license      GPL-3.0-or-later
 // @match        *://*.e621.net/*
