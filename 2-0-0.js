@@ -19,14 +19,12 @@
 (async function() {
 	
 	'use strict';
-	// todo:
-		// method to clear gallery cache
 	
 	// - General - - - - - - //{
 	let notArtists = [ 'unknown_artist','unknown_artist_signature','unknown_colorist','anonymous_artist','avoid_posting','conditional_dnp','sound_warning','epilepsy_warning' ];
 	let forbidden = { 'start': ['-', '~', '+'], 'any': [','] };   // characters that cause problems
 	let tagLim = { 'e621.net': 6, 'e926.net': 5 };   // higher-tier accounts can increase these
-	let roles = [  ];   // 'dev', 'noImage'
+	let roles = [ 'noImage' ];   // 'dev', 'noImage'
 	
 	let storLim = { 'blacklist': 750, 'sites': 100 };
 	let timeout = { 'cache': 90, 'storage': 15, 'gallery': 60*24, 'multisearch': 60*24*365 };   // in minutes
@@ -135,7 +133,8 @@
 		temp: tag => { n[tag] = props => n.elem(document.createElement(tag), props); }
 	};
 	
-	['div', 'span', 'a', 'img', 'style', 'input', 'li', 'option', 'br', 'h4', 'h5', 'form', 'select'].forEach(n.temp);
+	n.a = props => n.elem(document.createElement('a'), { href: 'javascript:void(0);', ...props });
+	['div', 'span', 'img', 'style', 'input', 'li', 'option', 'br', 'h4', 'h5', 'form', 'select'].forEach(n.temp);
 	let wikiHtml = () => ['h1', 'h2', 'h3', 'h6', 'blockquote', 'textarea', 'p', 'ul', 'ol'].forEach(n.temp);
 	
 	// GreaseMonkey fix - globalize access to the native e621 mode menu
@@ -286,7 +285,8 @@
 			} .eab:not(.favlist) { display: initial;
 			} .eab .sidebar::-webkit-scrollbar { display: none;
 			} .eabFade { opacity: 0.5;
-			} .eab ol, .eab ol li { margin-left: 0;
+			} .eab ol { margin: 0 0 1em 0;
+			} .eab ol li { margin-left: 0;
 			
 			} #content #tag-sidebar .eabHeart {
 				position: absolute;
@@ -450,11 +450,11 @@
 			
 			
 		/*  wiki/config  */
+			} .eab.wiki h5 { margin-top: 1.5em;
+			} .eab.wiki h3 { margin-bottom: 0.3ex;
 			} .eab.wiki img {
 				border-radius: 2px;
 				margin-left: 1em;
-			} .eab.wiki h5 {
-				margin-top: 1.5em;
 			} .eab textarea {
 				box-shadow: none;
 				width: ${eabWidth*2 - 4}px;
@@ -463,6 +463,8 @@
 				background: ${hsl(1)};
 			} .eab #help-sidebar li {
 				margin: 0;
+			} #eabClearVerify {
+				display: none;
 			
 			} #eabExternal {
 				height: 32px;
@@ -487,7 +489,7 @@
 				height: 32px;
 				${logos.base ? 'background-image: url('+logos.base+');' : ''}
 				background-size: auto 32px;
-				filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000) drop-shadow(0 0 2px ${hsl(2)});
+				filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000) drop-shadow(0 0 1px ${hsl(0)});
 				margin-right: 0.5ex;
 			} ${logosStyle}
 			
@@ -606,7 +608,7 @@
 		] });
 	
 	let wiki = {
-		topics: { blacklist: 'Blacklist', external: 'External sites', tips: 'Performance', interface: 'Interface', galleries: 'Galleries', restoration: 'Restoring data' },
+		topics: { blacklist: 'Blacklist', external: 'External sites', tips: 'Performance', cache: 'Cache management', interface: 'Interface', galleries: 'Galleries', restoration: 'Restoring data' },
 		help : () => n.p({ style: 'margin-top: 0.5ex', html: `My thread is over <a href="/forum/show/260782">here</a>, I'd love to hear from you. Thoughts, suggestions, any sort of feedback is welcome!` }),
 		config : () => n.p(),
 		
@@ -679,16 +681,28 @@
 			n.p({ text: `Also note that the Wiki search automatically applies wildcards to your search, while you have to add them manually to a Tag search.` })
 		],
 		
+		cache : () => [
+			n.p({ text: `Artist Basis makes extensive use of caching to cut down on server requests. Every cache entry expires automatically, but if you ever need to clear a cache, you can do so here.` }),
+			n.ul({ desc: [
+				n.li({ desc: n.a({ text: 'Watchlist', onclick: () => {
+					storage('eabInvalidateCache', now());
+					log.set('action', 'Watchlist cache invalidated.');
+				} }) }),
+				n.li({ desc: n.a({ text: 'Gallery', onclick: clearIdb }) }),
+				n.li({ desc: n.a({ text: 'Script state', onclick: clearStorage }) }),
+			] }),
+			n.p({ id: 'eabClearVerify', desc: [ n.a({ text: 'Click to verify:' }), n.text(' clear '), n.span({ text: '___' }), n.text(' cache entries?') ] })
+		],
+		
 		restoration : () => [
-			n.p({ html: `` }),
 			n.ol({ desc: [
-				n.li({ desc: [ n.a({ href: voidUrl, text: 'Create a backup', onclick: backup }), n.text(` first.`) ] }),
+				n.li({ desc: [ n.a({ text: 'Create a current backup', onclick: backup }), n.text(` first.`) ] }),
 				n.li({ text: `Open the backup you'd like to restore in a simple text reader program. Your web browser is a reliable option. Copy the contents.` }),
 				n.li({ html: `Check this <a href="/set?name=artist_watchlist">set list</a> for a private set created by your account. `, desc: n.ul({ desc:
 					n.li({ text: `Very old versions of the tool may have created multiple sets. If you find an extra set that hasn't been updated in a long time, you can safely delete it.` })
 				}) }),
 				n.li({ text: `Edit the set, and paste the backup into the set description field.` }),
-				n.li({ desc: n.a({ href: voidUrl, text: `Clear the script cache.`, onclick: clearStorage }) })
+				n.li({ desc: n.a({ text: `Clear the script's state.`, onclick: clearStorage }) })
 			] })
 		]
 	};
@@ -843,7 +857,6 @@
 	// - - layout/sidebar    //{
 	let content = sh.content(), loggedIn = sh.loggedIn();
 	let gallery, posts, postList, sidebar, status;
-	let voidUrl = 'javascript:void(0);';
 	
 	let help = {
 		span : title => n.span({ class: 'searchhelp', style: 'cursor:help', title, html: '&nbsp; (?)' }),
@@ -932,10 +945,10 @@
 				help.span('If you like this script, please leave a comment in my thread! Your feedback is the only way I know if I should maintain and improve the tool.\n\nSuggestions and ideas are very welcome as well.')
 			] }),
 			
-			n.div({ desc: n.a({ href: voidUrl, text: 'Create backup', onclick: backup }) }),
+			n.div({ desc: n.a({ text: 'Create backup', onclick: backup }) }),
 			
 			n.div({ desc: [
-				n.a({ href: voidUrl, text: 'Clear cache', onclick: function() {
+				n.a({ text: 'Clear cache', onclick: function() {
 					clearStorage();
 					storage('eabInvalidateCache', now());
 					eabRefresh();
@@ -1012,6 +1025,7 @@
 		if ( roles.includes('artistTags') ) initArtistTags();
 		if ( roles.includes('favlist') ) initFavlist();
 		if ( roles.includes('config') ) initConfig();
+		if ( roles.includes('help') ) initHelp();
 	}
 	
 	
@@ -1057,6 +1071,10 @@
 		log.set('action', 'Ready.');
 	}
 	
+	function initHelp() {
+		log.set('action', 'Ready.');
+	}
+	
 	
 	//}
 	// - - pre-init          //{
@@ -1076,10 +1094,7 @@
 	}
 	
 	if ( roles.includes('wiki') ) wikiHtml();
-	if ( roles.includes('help') ) {
-		prepContent( wikiTemplate( 'help', ['tips', 'interface', 'galleries', 'restoration'] ) );
-		log.set('action', 'Ready.');
-	}
+	if ( roles.includes('help') ) prepContent( wikiTemplate( 'help', ['tips', 'interface', 'galleries', 'cache', 'restoration'] ) );
 	if ( roles.includes('config') ) prepContent( wikiTemplate( 'config', ['blacklist', 'external'] ) );
 	if ( !loggedIn ) quit('Error: not logged in.');
 	
@@ -1764,14 +1779,14 @@
 	let searchPageLinks = curr => searchPages.map( (elem, page) => {
 		if ( elem ) return n.frag({ desc: [
 			(page === curr) && n.span({ class: 'current', text: page }),
-			(page !== curr) && n.a({ href: voidUrl, text: page, rel: (page > curr) ? 'next' : 'prev', onclick: () => switchSearchPage(page) }),
+			(page !== curr) && n.a({ text: page, rel: (page > curr) ? 'next' : 'prev', onclick: () => switchSearchPage(page) }),
 			n.text(' ')
 		] })
 	} );
 	
 	let prevNext = (curr, more) => {
-		let prev = { class: `prev_page ${ curr > 1 ? '' : 'disabled' }`, href: voidUrl, text: '« Previous', ...(curr > 1) && { onclick: () => switchSearchPage(curr - 1) } };
-		let next = { class: `next_page ${ more ? '' : 'disabled' }`, href: voidUrl, text: 'Next »', ...more && { onclick: () => switchSearchPage(curr + 1) } };
+		let prev = { class: `prev_page ${ curr > 1 ? '' : 'disabled' }`, text: '« Previous', ...(curr > 1) && { onclick: () => switchSearchPage(curr - 1) } };
+		let next = { class: `next_page ${ more ? '' : 'disabled' }`, text: 'Next »', ...more && { onclick: () => switchSearchPage(curr + 1) } };
 		
 		prev = ( curr > 1 ) ? n.a(prev) : n.span(prev);
 		next = ( more ) ? n.a(next) : n.span(next);
@@ -2013,6 +2028,28 @@
 		Object.keys(localStorage).forEach(key => {
 			if ( key.substr(0,3) === 'eab' && key !== 'eabInvalidateCache' ) localStorage.removeItem(key);
 		});
+		log.set('action', 'State cleared.');
+	}
+	
+	
+	async function clearIdb() {
+		let verify = getId('eabClearVerify');
+		await idbPrep();
+		
+		let count = await new Promise( resolve => {
+			let req = idb.transaction('items').objectStore('items').count();
+			req.onsuccess = () => resolve( req.result );
+			req.onerror = () => resolve( '???' );
+		});
+		
+		getCss('span', verify)[0].innerText = count;
+		verify.style.display = 'block';
+		
+		getCss('a', verify)[0].onclick = () => {
+			indexedDB.deleteDatabase('eabGallery');
+			verify.style.display = 'none';
+			log.set('action', 'IndexedDB cleared.');
+		};
 	}
 	
 	let store, idbGet = get => new Promise( function(resolve, reject) {
@@ -2036,10 +2073,13 @@
 	
 	let idb = false, idbReq, idbPromise = false;
 	function idbPrep() {
-		//indexedDB.deleteDatabase('eabGallery');
 		if ( !idbPromise ) idbPromise = new Promise( function(resolve, reject) {
 			idbReq = indexedDB.open('eabGallery', 1);
-			idbReq.onupgradeneeded = event => { idbReq.result.createObjectStore('items', { keyPath: 'artist' }); };
+			idbReq.onupgradeneeded = event => { let store = idbReq.result.createObjectStore('items', { keyPath: 'artist' }); };
+			idbReq.onupgradeneeded = event => {
+				idbReq.result.createObjectStore('items', { keyPath: 'artist' });
+			//	store.createIndex('by_artist', 'artist', { unique: true });
+			};
 			idbReq.onerror = event => resolve( log.notice('Cache failed, likely a Firefox private browsing bug.') );
 			
 			idbReq.onsuccess = event => {
