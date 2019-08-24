@@ -959,8 +959,8 @@
 		
 		misc : () => n.div({ desc: [
 			n.h5({ text: 'Miscellaneous' }),
-			n.div({ desc: n.a({ href: `${window.location.origin}/forum/show/260782`, text: 'Give feedback' }) }),
-			n.div({ desc: n.a({ text: 'Create backup', onclick: backup }) })
+			n.div({ desc: n.a({ text: 'Create backup', onclick: backup }) }),
+			n.div({ desc: n.a({ href: `${window.location.origin}/forum/show/260782`, text: 'Forum thread' }) })
 		] }),
 		
 		sites : (cond = sites.length) => !cond ? false : n.div({ desc: [
