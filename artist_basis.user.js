@@ -423,7 +423,7 @@
 				font-size: 10pt;
 			} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki, .eab .thumb:hover .newCounter::before {
 				opacity: 1;
-			} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki, .eabArtist a span {
+			} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki, .eabArtist a span:not(.eabFade) {
 				padding: 0 0.7ex;
 			} .eab .thumb:hover .eabHeart, .eab .thumb:hover .eabWiki {
 				width: initial;
