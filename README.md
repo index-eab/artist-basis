@@ -17,23 +17,22 @@ This page searches both artist databases and presents the results in a way that 
 
 #### Other
 * A "View artists" mode is also added to the mode menu.
-* Blacklisting is supported.  
-h6.  
+* Blacklisting is supported. 
   
   
 ## Installation
-1. Have a userscript manager (eg Tampermonkey - "Firefox":https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/ [b]·[/b] "Chrome":https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo?hl=en [b]·[/b] "Other":https://www.tampermonkey.net/)
+1. Have a userscript manager (eg Tampermonkey - ![Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) **·** ![Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo?hl=en) **·** ![Other](https://www.tampermonkey.net/)
 2. Install here: https://openuserjs.org/install/index-eaw/Artist_Watchlist.user.js
   
 <details><summary>Version history</summary>
 
-Released as [b]Artist Gallery[/b] and quickly withdrawn.
+Released as **Artist Gallery** and quickly withdrawn.
 
 <details><summary>Version 0.0 (2016-06-01)</summary>
 * Basic gallery functions.
 </details>
 
-Total rewrite, released as [b]Artist Watchlist[/b].
+Total rewrite, released as **Artist Watchlist**.
 
 <details><summary>Version 1.0 (2018-08-18)</summary>
 * Dropped the gallery. Basic watchlist functions only.
@@ -72,7 +71,7 @@ Total rewrite, released as [b]Artist Watchlist[/b].
 * Flash thumbnails are now shown properly
 </details>
 
-Third release as [b]Artist Basis[/b] - the first real release of the tool as I originally envisioned it. Much of the script was rewritten.
+Third release as **Artist Basis** - the first real release of the tool as I originally envisioned it. Much of the script was rewritten.
 
 <details><summary>Version 2.0 (2019-08-12)</summary>
 * Re-introduced artist galleries, drastically improved from the initial release.
