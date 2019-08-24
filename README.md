@@ -27,31 +27,31 @@ h6.
 
 Released as [b]Artist Gallery[/b] and quickly withdrawn.
 
-[section=Version 0.0 (2016-06-01)]
+<details><summary>Version 0.0 (2016-06-01)</summary>
 * Basic gallery functions.
-[/section]
+</details>
 
 Total rewrite, released as [b]Artist Watchlist[/b].
 
-[section=Version 1.0 (2018-08-18)]
+<details><summary>Version 1.0 (2018-08-18)</summary>
 * Dropped the gallery. Basic watchlist functions only.
-[/section]
+</details>
 
-[section=Version 1.1 (2018-10-26)  (skipped release)]
+<details><summary>Version 1.1 (2018-10-26)  (skipped release)</summary>
 * You can now favorite artists from the sidebar of posts and search results.
 * Thumbnails on the watchlist are now cached, reducing server strain and wait times. Expired thumbnails are grayed out.
-[/section]
+</details>
 
-[section=Version 1.2 (2018-11-08)]
+<details><summary>Version 1.2 (2018-11-08)</summary>
 * There's a new mode in search results and on favorite post lists, "View artists", for more convenient artist favoriting.
 * New, easier to read date format
 * Support for very large watchlists
 * Fixed errors that could occur if you used the script in two places simultaneously
 * eSix Extend compatibility
 * Numerous bug fixes and stability improvements
-[/section]
+</details>
 
-[section=Version 1.3 (2019-04-10)]
+<details><summary>Version 1.3 (2019-04-10)</summary>
 * You can now blacklist tags.
 * The watchlist is now divided into time categories, including one highlighting posts since your last visit.
 * On the watchlist and in the artist view mode, hover over posts to show the favorites <3. Links to artist wikis were also added.
@@ -59,24 +59,24 @@ Total rewrite, released as [b]Artist Watchlist[/b].
 * The style now adjusts to themes besides Hexagon.
 * Greatly improved stability and performance in certain edge cases.
 * Added options to create backups and clear cached results.
-[/section]
+</details>
 
-[section=Version 1.4 (2019-06-29)  (skipped release)]
+<details><summary>Version 1.4 (2019-06-29)  (skipped release)</summary>
 * Changed thumbnail links to make more sense with the above change: Click a thumbnail to be taken to that particular post. Click an artist's name or the date to go that artist's post list. As always, hover over the thumbnail and click the ? to go that artist's wiki.
 * The watchlist will now fully maintain its state if you navigate away, until the cache expires (60 minutes)
 * "View artists" mode is now maintained between pages, like the native modes. Accordingly the mode can now be exited from the sidebar.
 * Stylistic changes, and improved theme integration (bloodlust in particular looks much better :3)
 * Further optimized database, making about 20% more space in the watchlist
 * Flash thumbnails are now shown properly
-[/section]
+</details>
 
 Third release as [b]Artist Basis[/b] - the first real release of the tool as I originally envisioned it. Much of the script was rewritten.
 
-[section=Version 2.0 (2019-08-12)]
+<details><summary>Version 2.0 (2019-08-12)</summary>
 * Re-introduced artist galleries, drastically improved from the initial release.
 * Added a comprehensive help page. Moved configuration options to a config page.
 * Added a section to the watchlist
 * Stability improvements
-[/section]
+</details>
 
 </details>
