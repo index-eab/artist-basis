@@ -2,7 +2,7 @@
 // @name         Artist Basis
 // @description  Artist-based tools for e621 including subscriptions and galleries
 // @namespace    https://e621.net/basis/watchlist
-// @version      2.0.0
+// @version      2.0.1
 // @author       index
 // @license      GPL-3.0-or-later
 // @match        *://*.e621.net/*
@@ -1934,7 +1934,7 @@
 			url += '?' + data.join('&');
 		} else {
 			form = new FormData();
-			data['_client'] = agent;
+			form.append('_client', agent);
 			for (let part in data) form.append(part, data[part]);
 		}
 		
