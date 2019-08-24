@@ -73,7 +73,7 @@ Total rewrite, released as **Artist Watchlist**.
 
 Third release as **Artist Basis** - the first real release of the tool as I originally envisioned it. Much of the script was rewritten.
 
-<details><summary>Version 2.0 (2019-08-12)</summary>
+<details><summary>Version 2.0 (2019-08-24)</summary>
 * Re-introduced artist galleries, drastically improved from the initial release.
 * Added a comprehensive help page. Moved configuration options to a config page.
 * Added a section to the watchlist
