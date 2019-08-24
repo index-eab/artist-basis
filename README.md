@@ -2,15 +2,15 @@
   
   
 ## Features
-#### "Artist Watchlist":https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/watchlist.jpg
+#### ![Artist Watchlist](https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/watchlist.jpg)
 This page offers specialized tag subscriptions for artists. It helps you keep up with the activity of your favorite artists on e621, and also provides convenient access to primary sources for uploaders. In most places where you find artist tags on the site, you'll find a small ♥ icon to add that artist to the watchlist.
 
-#### "Artist Gallery":https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/gallery.jpg
+#### ![Artist Gallery](https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/gallery.jpg)
 An overwhelming number of posts exist on e621, so it can be difficult to find artists you're interested in. The Artist Gallery lets you browse artist tags on the site in a gallery format. I've been using it personally for years, and it's found me countless hidden gems that I'd never been made aware of otherwise.
 
 There's a gallery for each artist database on the site - tags and wikis. The tag database is faster and more complete, but they each have their uses. More info can be found in the tool's help page.
 
-#### "Artist Search":https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/search.jpg
+#### ![Artist Search](https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/search.jpg)
 This page searches both artist databases and presents the results in a way that makes sense (and in a gallery format, of course). It can make searching for an artist by name much easier.
 
 #### Other
