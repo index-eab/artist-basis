@@ -1347,7 +1347,7 @@
 		if ( find.length > 1 ) tags = `~${tags}&limit=${s*ppa}`;   // limit slows search down w/ 1 tag
 		
 		pLim = lim;
-		console.log('Searching: ', find);
+		if (roles.includes('dev')) console.log('Searching: ', find);
 		request('GET', '/post/index.json', [`tags=${tags}`]).then(createGallery, quitReq);
 		log.set('action', 'Requesting posts...');
 	}
