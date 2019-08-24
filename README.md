@@ -22,7 +22,7 @@ This page searches both artist databases and presents the results in a way that 
   
 ## Installation
 1. Have a userscript manager (eg Tampermonkey - ![Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) **·** ![Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo?hl=en) **·** ![Other](https://www.tampermonkey.net/)
-2. Install here: https://raw.githubusercontent.com/index-eab/artist-basis/master/2-0-0.js
+2. Install here: https://github.com/index-eab/artist-basis/raw/master/artist_basis.user.js
   
 <details><summary>Version history</summary>
 
