@@ -1,32 +1,29 @@
-h1.This post under construction
+**Artist Basis** is a collection of tools that helps you discover new artists and watch for new posts from your favorite creators. Short descriptions and demonstrations are below.
   
   
-[b]Artist Basis[/b] is a collection of tools that helps you discover new artists and watch for new posts from your favorite creators. Short descriptions and demonstrations are below.
-  
-  
-h3.Features
-h4."Artist Watchlist":https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/watchlist.jpg
+###Features
+####"Artist Watchlist":https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/watchlist.jpg
 This page offers specialized tag subscriptions for artists. It helps you keep up with the activity of your favorite artists on e621, and also provides convenient access to primary sources for uploaders. In most places where you find artist tags on the site, you'll find a small ♥ icon to add that artist to the watchlist.
 
-h4."Artist Gallery":https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/gallery.jpg
+####"Artist Gallery":https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/gallery.jpg
 An overwhelming number of posts exist on e621, so it can be difficult to find artists you're interested in. The Artist Gallery lets you browse artist tags on the site in a gallery format. I've been using it personally for years, and it's found me countless hidden gems that I'd never been made aware of otherwise.
 
 There's a gallery for each artist database on the site - tags and wikis. The tag database is faster and more complete, but they each have their uses. More info can be found in the tool's help page.
 
-h4."Artist Search":https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/search.jpg
+####"Artist Search":https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/search.jpg
 This page searches both artist databases and presents the results in a way that makes sense (and in a gallery format, of course). It can make searching for an artist by name much easier.
 
-h4.Other
+####Other
 * A "View artists" mode is also added to the mode menu.
 * Blacklisting is supported.  
 h6.  
   
   
-h3.Installation
+###Installation
 1. Have a userscript manager (eg Tampermonkey - "Firefox":https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/ [b]·[/b] "Chrome":https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo?hl=en [b]·[/b] "Other":https://www.tampermonkey.net/)
 2. Install here: https://openuserjs.org/install/index-eaw/Artist_Watchlist.user.js
   
-[section=Version history]
+<details><summary>Version history</summary>
 
 Released as [b]Artist Gallery[/b] and quickly withdrawn.
 
@@ -82,4 +79,4 @@ Third release as [b]Artist Basis[/b] - the first real release of the tool as I o
 * Stability improvements
 [/section]
 
-[/section]
+</details>
