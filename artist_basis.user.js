@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Artist Basis
 // @description  Artist-based tools for e621 including subscriptions and galleries
-// @namespace    https://e621.net/artist/watchlist
+// @namespace    https://e621.net/basis/watchlist
 // @version      2.0.0
 // @author       index
 // @license      GPL-3.0-or-later
