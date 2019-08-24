@@ -24,7 +24,7 @@
 	let notArtists = [ 'unknown_artist','unknown_artist_signature','unknown_colorist','anonymous_artist','avoid_posting','conditional_dnp','sound_warning','epilepsy_warning' ];
 	let forbidden = { 'start': ['-', '~', '+'], 'any': [','] };   // characters that cause problems
 	let tagLim = { 'e621.net': 6, 'e926.net': 5 };   // higher-tier accounts can increase these
-	let roles = [ 'noImage' ];   // 'dev', 'noImage'
+	let roles = [  ];   // 'dev', 'noImage'
 	
 	let storLim = { 'blacklist': 750, 'sites': 100 };
 	let timeout = { 'cache': 90, 'storage': 15, 'gallery': 60*24, 'multisearch': 60*24*365 };   // in minutes
@@ -326,7 +326,8 @@
 				margin: 0.5px 0;
 				top: 0;
 			} #eabSearch input[type="submit"] {
-				margin: 0.625ex 0;
+				width: 100%;
+				float: none;
 			} #eabSearch input:not([type="submit"]), #eabSearch select {
 				right: 1px;
 			} #eabSearch select {
@@ -945,15 +946,7 @@
 				help.span('If you like this script, please leave a comment in my thread! Your feedback is the only way I know if I should maintain and improve the tool.\n\nSuggestions and ideas are very welcome as well.')
 			] }),
 			
-			n.div({ desc: n.a({ text: 'Create backup', onclick: backup }) }),
-			
-			n.div({ desc: [
-				n.a({ text: 'Clear cache', onclick: function() {
-					clearStorage();
-					storage('eabInvalidateCache', now());
-					eabRefresh();
-				} })
-			] })
+			n.div({ desc: n.a({ text: 'Create backup', onclick: backup }) })
 		] }),
 		
 		sites : (cond = sites.length) => !cond ? false : n.div({ desc: [
@@ -985,7 +978,7 @@
 		if ( !prefs ) prefs = JSON.parse(storage('eabPrefs'));
 		prefs.sites = prefs.sites || [ ];  // backward compatibility: pre-2.0
 		
-		if ( prefs.time ) {  // alert - does saving config interrupt cache?
+		if ( prefs.time ) {
 			// backward compatibility: pre-1.4
 			if ( !Array.isArray(prefs.time) ) prefs.time = [ prefs.time, prefs.time ];
 			
@@ -1163,7 +1156,7 @@
 	let galleryCache = { };
 	let initGalleryItem = (artist, info, resolve, counter) => {
 		if ( info ) {
-			if ( info.swf && !checkBl(info.swf) ) swfRecord[artist] = info.swf;   // alert - is this working?
+			if ( info.swf && !checkBl(info.swf) ) swfRecord[artist] = info.swf;
 			galleryCache[artist] = info;
 			
 			// keep for 4x initial age of the post or 1 day, whichever is larger
@@ -1198,7 +1191,7 @@
 		layers = [ { time: 0, desc: 'List' } ];
 		
 		modPaginator('basis=true');
-		initLayout( ['search', 'misc'] );
+		initLayout( ['search'] );
 		
 		[...artists].reverse().forEach(sanitize);
 		if (artists.length === 0) log.set('action', 'No results.');
@@ -1258,12 +1251,13 @@
 		log.set('action', 'Searching...');
 		let data1 = await request('GET', '/tag/index.json', [`name=*${searchFor}*`, 'type=1', 'order=date', `page=${searchPage}`]).then(searchResults);
 		let data2 = await request('GET', '/artist/index.json', [`name=${searchFor}`, `page=${searchPage}`]).then(searchResults);
-		if ( searchPage === 1 && !searchProcess[searchFor] && domStatus.prevNext )  // alert - check this
-			await request('GET', '/tag/index.json', [`name=${searchFor}`, 'type=1']).then(searchResults);
+		
+		let more = Math.max(data1.length, data2.length) === 50;
+		if ( searchPage === 1 && !searchProcess[searchFor] && more ) await request('GET', '/tag/index.json', [`name=${searchFor}`, 'type=1']).then(searchResults);
 		
 		if ( data1.length + data2.length === 0 ) return log.set('action', 'No results found.');
 		
-		gallery.appendChild( prevNext(searchPage, Math.max(data1.length, data2.length) === 50) );
+		gallery.appendChild( prevNext(searchPage, more) );
 		domStatus.prevNext = true;
 		
 		getPosts( tagLim[host], () => {
@@ -1997,6 +1991,7 @@
 		// combine sorted and artists, remove duplicates and unfavorited
 		let list = set.filter( artist => !purge.includes(artist) );
 		prefs.watchlist = assembleCache(list, prefs.watchlist);
+		prefs.site = host;
 		
 		let compressed = setDesc();
 		if ( compressed.length >= 9990 ) return log.notice(`Onsite storage limit exceeded: ${compressed.length}/9990`);
@@ -2158,6 +2153,8 @@
 			storage('eabSilent', 'true');
 			saveFile(set.description);
 		}
+		
+		if ( !eabPrefs.site || eabPrefs.site !== host ) storage('eabInvalidateCache', now());
 		
 		storage('eabSetId', set.id);
 		return Promise.resolve(eabPrefs);
