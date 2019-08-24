@@ -1,7 +1,7 @@
 **Artist Basis** is a collection of tools that helps you discover new artists and watch for new posts from your favorite creators. Short descriptions and demonstrations are below.
   
   
-### Features
+## Features
 #### "Artist Watchlist":https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/watchlist.jpg
 This page offers specialized tag subscriptions for artists. It helps you keep up with the activity of your favorite artists on e621, and also provides convenient access to primary sources for uploaders. In most places where you find artist tags on the site, you'll find a small ♥ icon to add that artist to the watchlist.
 
@@ -19,7 +19,7 @@ This page searches both artist databases and presents the results in a way that 
 h6.  
   
   
-### Installation
+## Installation
 1. Have a userscript manager (eg Tampermonkey - "Firefox":https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/ [b]·[/b] "Chrome":https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo?hl=en [b]·[/b] "Other":https://www.tampermonkey.net/)
 2. Install here: https://openuserjs.org/install/index-eaw/Artist_Watchlist.user.js
   
