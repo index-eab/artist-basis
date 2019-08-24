@@ -8,8 +8,9 @@
 // @match        *://*.e621.net/*
 // @match        *://*.e926.net/*
 // @run-at       document-start
-// @updateURL    https://openuserjs.org/meta/index-eaw/Artist_Watchlist.meta.js
-// @downloadURL  https://openuserjs.org/install/index-eaw/Artist_Watchlist.user.js
+// @updateURL    https://raw.githubusercontent.com/index-eab/artist-basis/master/artist_basis.meta.js
+// @downloadURL  https://raw.githubusercontent.com/index-eab/artist-basis/master/artist_basis.user.js
+// @supportURL   https://e926.net/forum/show/260782
 // @grant        GM.getResourceUrl
 // @resource     demo    https://raw.githubusercontent.com/index-eaw/artist-basis/master/img/demo_00.png
 // @resource     logos   https://raw.githubusercontent.com/index-eaw/artist-basis/master/img/logos_00.png
