@@ -677,11 +677,14 @@
 					n.li({ text: `Includes all artists, namely those without a wiki entry. The wiki gallery is about a third of the size of this one.` }),
 				] }) }), n.br(),
 				n.li({ text: 'Wiki Gallery', desc: n.ul({ desc: [
-					n.li({ text: `More options to search, like gallery URL.` }),
+					n.li({ text: `More options to search with, like gallery URL.` }),
 					n.li({ text: `Searching will find aliases as well. Artists without wikis or with incomplete ones won't be found.` }),
+				] }) }), n.br(),
+				n.li({ text: 'Arist Search', desc: n.ul({ desc: [
+					n.li({ text: `Searches for identical and partially matching tags as well as aliases, taking results from the other two galleries.` }),
 				] }) })
 			] }),
-			n.p({ text: `Also note that the Wiki search automatically applies wildcards to your search, while you have to add them manually to a Tag search.` })
+			n.p({ text: `Note that the Tag Gallery is the only one that doesn't automatically apply wildcards ( * ) to the beginning and end of your search.` })
 		],
 		
 		cache : () => [
@@ -866,23 +869,6 @@
 		a : href => n.a({ class: 'searchhelp', html: '&nbsp; (help)', href })
 	};
 	
-	let fKey;
-	window.addEventListener( 'keyup', e => { if ( e.keyCode === 70 ) fKey = false } );
-	window.addEventListener( 'keydown', e => { if ( e.keyCode === 70 ) fKey = true } );
-	let eggs = [ `J'suis d'accord pour le cinéma_Pour le rock, le twist ou le cha-cha`, `NOW FROM THIS SOLAR SYSTEM_TO ANOTHER I FLY`, `Pump up the jam, pump it up_While your feet are stumpin`, `You had something to hide_Should have hidden it, shouldn't you`, `Oh oh, luxury_Chidi ching ching could buy anything`, `Bass solo_Take 1`, `Who the fuck is this_Pagin me at 5:46 in the morning_Crack of dawn and now I'm yawnin`, `Mike picked up the phone_Just like every other night Mike had to go home`, `Yeah_Here comes Amos`, `Hm hmm, my, hm hm. Mmm, meh, hm hm_These illusions in my head`, `Am I throwing you off?_Didn't think so`, `Alright_Scannin the scene on the city tonight_Looking for you to start up a fight`, `The game of chess is like a sword fight_You must think first (HEE) before you move`, `Tak samo znów bez żadnych słów_Odchodzisz i zostawisz mnie tu`, `There I was completely wasted, out of work and down_All inside it's so frustrating as I drift from town to town`, `Alright you primitive screwheads, listen up_This is my BOOMSTICK`, `I'm not very good at uh, singing songs_But uh, here is a_Here is a try` ];
-	let eggLetter = (event, i, egg) => {
-		if ( !i ) {
-			if ( !event.shiftKey || !fKey || event.target.dataset.egg ) return;
-			i = 0;
-			event.target.textContent = '';
-			event.target.dataset.egg = 'true';
-			egg = eggs[Math.floor(Math.random()*eggs.length)];
-		}
-		
-		event.target.appendChild( egg.charAt(i) === '_' ? n.br() : n.text(egg.charAt(i)) );
-		if ( i+1 !== egg.length ) timer(30).then( () => eggLetter(event, i+1, egg) );
-	}
-	
 	log = {
 		action : n.div({ text: 'Waiting...' }),
 		notice : (text, id) => {
@@ -983,6 +969,24 @@
 			gallery = n.div({ class: 'content-post' })
 		] }), n.div({ class: 'Clear' })
 	] });
+	
+	let fKey;
+	window.addEventListener( 'keyup', e => { if ( e.keyCode === 70 ) fKey = false } );
+	window.addEventListener( 'keydown', e => { if ( e.keyCode === 70 ) fKey = true } );
+	let eggs = [ `J'suis d'accord pour le cinéma_Pour le rock, le twist ou le cha-cha`, `NOW FROM THIS SOLAR SYSTEM_TO ANOTHER I FLY`, `Pump up the jam, pump it up_While your feet are stumpin`, `You had something to hide_Should have hidden it, shouldn't you`, `Oh oh, luxury_Chidi ching ching could buy anything`, `Bass solo_Take 1`, `Who the fuck is this_Pagin me at 5:46 in the morning_Crack of dawn and now I'm yawnin`, `Mike picked up the phone_Just like every other night Mike had to go home`, `Yeah_Here comes Amos`, `Hm hmm, my, hm hm. Mmm, meh, hm hm_These illusions in my head (I never wanna leave)`, `Am I throwing you off?_Didn't think so`, `Scanning the scene on the city tonight_Looking for you to start up a fight`, `The game of chess is like a sword fight_You must think first (HEE) before you move`, `Tak samo znów bez żadnych słów_Odchodzisz i zostawisz mnie tu`, `There I was completely wasted, out of work and down_All inside it's so frustrating as I drift from town to town`, `Alright you primitive screwheads, listen up_This is my BOOMSTICK`, `I'm not very good at uh, singing songs_But uh, here is a_Here is a try` ];
+	let eggLetter = (event, i, egg) => {
+		if ( !i ) {
+			if ( !event.shiftKey || !fKey || event.target.dataset.egg ) return;
+			i = 0;
+			event.target.textContent = '';
+			event.target.dataset.egg = 'true';
+			egg = eggs[Math.floor(Math.random()*eggs.length)];
+			eggs.splice(eggs.indexOf(egg), 1); 
+		}
+		
+		event.target.appendChild( egg.charAt(i) === '_' ? n.br() : n.text(egg.charAt(i)) );
+		if ( i+1 !== egg.length ) timer(30).then( () => eggLetter(event, i+1, egg) );
+	}
 	
 	//}
 	
