@@ -281,6 +281,7 @@
 		/*  general  */
 			.eab input:disabled { background: #555;
 			} .eab { text-shadow: 0 0 3px ${color(2)};
+			} .favlist .sidebar { text-shadow: none;
 			} .eab #paginator { text-shadow: none;
 			} .eab:not(.favlist) { display: initial;
 			} .eab .sidebar::-webkit-scrollbar { display: none;
