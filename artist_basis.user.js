@@ -942,12 +942,7 @@
 		
 		misc : () => n.div({ desc: [
 			n.h5({ text: 'Miscellaneous' }),
-			
-			n.div({ desc: [
-				n.a({ href: `${window.location.origin}/forum/show/260782`, text: 'Give feedback' }),
-				help.span('If you like this script, please leave a comment in my thread! Your feedback is the only way I know if I should maintain and improve the tool.\n\nSuggestions and ideas are very welcome as well.')
-			] }),
-			
+			n.div({ desc: n.a({ href: `${window.location.origin}/forum/show/260782`, text: 'Give feedback' }) }),
 			n.div({ desc: n.a({ text: 'Create backup', onclick: backup }) })
 		] }),
 		
