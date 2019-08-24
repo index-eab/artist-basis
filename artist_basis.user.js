@@ -1473,7 +1473,7 @@
 			dText = [ n.text(`${('0' + date.getDate()).slice(-2)} ${months[date.getMonth()]} `), n.span({ class: 'eabFade', text: date.getFullYear() }) ];
 		}
 		
-		let dims = ( blRecord[artist] && blRecord[artist].includes(md5) ) ? dInfo.min.i : info.min.i;  // alert - ensure this shit is working
+		let dims = ( blRecord[artist] && blRecord[artist].includes(md5) ) ? dInfo.min.i : info.min.i;
 		let heart = ( info.min.t < 5 && !watch.includes(artist) ) ? false : eabHeart(artist, 'heart');
 		
 		return n.span({ id: info.itemId || `ab-${artist}`, class: `thumb ${info.itemClass || ''}`, 'data-time': info.min.t, desc:
@@ -1567,7 +1567,7 @@
 		}
 		
 		let existing = getId(`ab-${artist}`);
-		if ( existing ) {   // alert - optimize this  // alert - problem with search in latter pages
+		if ( existing ) {   // alert - optimize this
 			// if we're surrounded by layer divs, this is the last item in the layer and it can be hidden
 			let last = ![existing.nextElementSibling.tagName, existing.previousElementSibling.tagName].includes('SPAN');
 			if (last) existing.previousElementSibling.style.display = 'none';
