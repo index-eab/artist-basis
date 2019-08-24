@@ -63,21 +63,27 @@ Total rewrite, released as **Artist Watchlist**.
 </details>
 
 <details><summary>Version 1.4 (2019-06-29)  (skipped release)</summary>
-* Changed thumbnail links to make more sense with the above change: Click a thumbnail to be taken to that particular post. Click an artist's name or the date to go that artist's post list. As always, hover over the thumbnail and click the ? to go that artist's wiki.
-* The watchlist will now fully maintain its state if you navigate away, until the cache expires (60 minutes)
-* "View artists" mode is now maintained between pages, like the native modes. Accordingly the mode can now be exited from the sidebar.
-* Stylistic changes, and improved theme integration (bloodlust in particular looks much better :3)
-* Further optimized database, making about 20% more space in the watchlist
-* Flash thumbnails are now shown properly
+* Before, the watchlist showed only the latest post and you had to manually check for more. Now all new posts are accounted for - the watchlist will report, for example, that an artist has 6 new posts since your last visit, and you can expand them without leaving the page.
+* Changed thumbnail links to make more sense with the above change. Check the new help page for an overview.
+* The watchlist now enters a "cooldown" state after it updates. Until the cache expires (90 minutes), you can navigate away and back without the state of the watchlist changing.
+* "View artists" mode is now maintained between pages, like the native modes.
+* Stylistic changes, and greatly improved theme system.
+* Further optimized database, saving about 25% storage space.
+* Flash thumbnails are now shown properly.
 </details>
 
 Third release as **Artist Basis** - the first real release of the tool as I originally envisioned it. Much of the script was rewritten.
 
 <details><summary>Version 2.0 (2019-08-24)</summary>
-* Re-introduced artist galleries, drastically improved from the initial release.
-* Added a comprehensive help page. Moved configuration options to a config page.
-* Added a section to the watchlist
-* Stability improvements
+* The script now has its own top-level tab. Look for **Basis** to the right of **Artists* in the site navigation.
+* Added a comprehensive Help and Configuration pages. Blacklist setup and cache management were moved here, along with countless other topics.
+* I eliminated the "Add/remove artist" field and replaced it with a search that leads to the tag galley. It was an awful, inflexible input method now that other options are available.
+* "Other sites" section added to the watchlist - intended to make the watchlist a hub for your watchlists on other sites where artists upload their work.
+* Faster, more reliable, and more transparent handling of irregular tags (aliases, no posts, etc).
+* Storage is better regulated: every preference is individually limited so that onsite storage is never exceeded.
+* The tool now drops into a "simple search" mode in case the server is taking too long to process requests.
+* Countless minor enhancements and stability fixes.
+* Thumbnail caption now flexes to accommodate long artist names.
 </details>
 
 </details>
