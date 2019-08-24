@@ -866,6 +866,23 @@
 		a : href => n.a({ class: 'searchhelp', html: '&nbsp; (help)', href })
 	};
 	
+	let fKey;
+	window.addEventListener( 'keyup', e => { if ( e.keyCode === 70 ) fKey = false } );
+	window.addEventListener( 'keydown', e => { if ( e.keyCode === 70 ) fKey = true } );
+	let eggs = [ `J'suis d'accord pour le cinéma_Pour le rock, le twist ou le cha-cha`, `NOW FROM THIS SOLAR SYSTEM_TO ANOTHER I FLY`, `Pump up the jam, pump it up_While your feet are stumpin`, `You had something to hide_Should have hidden it, shouldn't you`, `Oh oh, luxury_Chidi ching ching could buy anything`, `Bass solo_Take 1`, `Who the fuck is this_Pagin me at 5:46 in the morning_Crack of dawn and now I'm yawnin`, `Mike picked up the phone_Just like every other night Mike had to go home`, `Yeah_Here comes Amos`, `Hm hmm, my, hm hm. Mmm, meh, hm hm_These illusions in my head`, `Am I throwing you off?_Didn't think so`, `Alright_Scannin the scene on the city tonight_Looking for you to start up a fight`, `The game of chess is like a sword fight_You must think first (HEE) before you move`, `Tak samo znów bez żadnych słów_Odchodzisz i zostawisz mnie tu`, `There I was completely wasted, out of work and down_All inside it's so frustrating as I drift from town to town`, `Alright you primitive screwheads, listen up_This is my BOOMSTICK`, `I'm not very good at uh, singing songs_But uh, here is a_Here is a try` ];
+	let eggLetter = (event, i, egg) => {
+		if ( !i ) {
+			if ( !event.shiftKey || !fKey || event.target.dataset.egg ) return;
+			i = 0;
+			event.target.textContent = '';
+			event.target.dataset.egg = 'true';
+			egg = eggs[Math.floor(Math.random()*eggs.length)];
+		}
+		
+		event.target.appendChild( egg.charAt(i) === '_' ? n.br() : n.text(egg.charAt(i)) );
+		if ( i+1 !== egg.length ) timer(30).then( () => eggLetter(event, i+1, egg) );
+	}
+	
 	log = {
 		action : n.div({ text: 'Waiting...' }),
 		notice : (text, id) => {
@@ -1035,7 +1052,7 @@
 	
 	function populateGallery() {
 		layers.forEach(layer => {
-			gallery.appendChild(n.div({ class: 'eabLayer', id: `eabLayer${layer.id ? layer.id : layers.indexOf(layer)}`, desc:
+			gallery.appendChild(n.div({ class: 'eabLayer', id: `eabLayer${layer.id ? layer.id : layers.indexOf(layer)}`, onclick: eggLetter, desc:
 				n.div({ html: layer.desc, ...layer.append && { desc: layer.append } })
 			}) );
 		});
@@ -1347,7 +1364,7 @@
 		if ( find.length > 1 ) tags = `~${tags}&limit=${s*ppa}`;   // limit slows search down w/ 1 tag
 		
 		pLim = lim;
-		if (roles.includes('dev')) console.log('Searching: ', find);
+		if ( roles.includes('dev') ) console.log('Searching: ', find);
 		request('GET', '/post/index.json', [`tags=${tags}`]).then(createGallery, quitReq);
 		log.set('action', 'Requesting posts...');
 	}
