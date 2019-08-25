@@ -2,7 +2,7 @@
 // @name         Artist Basis
 // @description  Artist-based tools for e621 including subscriptions and galleries
 // @namespace    https://e621.net/basis/watchlist
-// @version      2.0.2
+// @version      2.0.3
 // @author       index
 // @license      GPL-3.0-or-later
 // @match        *://*.e621.net/*
@@ -1917,7 +1917,8 @@
 	};
 	
 	let quitReq = page => quit(`Server error: ${page.status} on ${page.responseURL}`);
-	let reqLog = { }, lastReq = 0, slowTimeout;
+	let reqLog = { }, lastReq = 0, slowTimeout, agent = `Artist_Basis/${GM.info.script.version} (by index on e621)`;
+	console.log('User agent: ', agent);
 	async function request(method, url, data = []) {
 		let limited = url.includes('/post/index.json');
 		
@@ -1927,7 +1928,7 @@
 		lastReq = Date.now();
 		
 		
-		let form, agent = `Artist_Basis/${GM.info.script.version} (by index on e621)`;
+		let form;
 		if ( Array.isArray(data) ) {
 			form = null;
 			data.push(`_client=${agent}`);
