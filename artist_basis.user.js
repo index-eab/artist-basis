@@ -2,7 +2,7 @@
 // @name         Artist Basis
 // @description  Artist-based tools for e621 including subscriptions and galleries
 // @namespace    https://e621.net/basis/watchlist
-// @version      2.0.3
+// @version      2.0.4
 // @author       index
 // @license      GPL-3.0-or-later
 // @match        *://*.e621.net/*
@@ -135,8 +135,8 @@
 	};
 	
 	n.a = props => n.elem(document.createElement('a'), { href: 'javascript:void(0);', ...props });
-	['div', 'span', 'img', 'style', 'input', 'li', 'option', 'br', 'h4', 'h5', 'form', 'select'].forEach(n.temp);
-	let wikiHtml = () => ['h1', 'h2', 'h3', 'h6', 'blockquote', 'textarea', 'p', 'ul', 'ol'].forEach(n.temp);
+	['div', 'span', 'img', 'style', 'input', 'li', 'option', 'br', 'h4', 'h5', 'form', 'select', 'textarea'].forEach(n.temp);
+	let wikiHtml = () => ['h1', 'h2', 'h3', 'h6', 'blockquote', 'p', 'ul', 'ol'].forEach(n.temp);
 	
 	// GreaseMonkey fix - globalize access to the native e621 mode menu
 	try {
@@ -1916,9 +1916,15 @@
 		time: 0
 	};
 	
-	let quitReq = page => quit(`Server error: ${page.status} on ${page.responseURL}`);
+	let quitReq = page => {
+		sidebar.appendChild( n.frag({ desc: [
+			n.text('URL:'), n.textarea({ text: page.responseURL }),
+			n.text('Response:'), n.textarea({ text: JSON.stringify(page.response) })
+		] }) );
+		quit(`${page.status} server error.`);
+	}
+	
 	let reqLog = { }, lastReq = 0, slowTimeout, agent = `Artist_Basis/${GM.info.script.version} (by index on e621)`;
-	console.log('User agent: ', agent);
 	async function request(method, url, data = []) {
 		let limited = url.includes('/post/index.json');
 		
