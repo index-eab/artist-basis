@@ -2,7 +2,7 @@
 // @name         Artist Basis
 // @description  Artist-based tools for e621 including subscriptions and galleries
 // @namespace    https://e621.net/basis/watchlist
-// @version      2.0.4
+// @version      2.0.5
 // @author       index
 // @license      GPL-3.0-or-later
 // @match        *://*.e621.net/*
@@ -1901,7 +1901,7 @@
 	
 	//}
 	// - - comms             //{
-	let setDesc = () => 'This private set contains your configuration of the \nArtist Basis script. It is used so your list can be\npermanently stored between sessions. If this set\nis tampered with, the script may malfunction.\n\n' + LZString.compressToUTF16(JSON.stringify(prefs));
+	let setDesc = record => 'This private set contains your configuration of the \nArtist Basis script. It is used so your list can be\npermanently stored between sessions. If this set\nis tampered with, the script may malfunction.\n\n' + LZString.compressToUTF16(JSON.stringify(record));
 	
 	function slowMode() {
 		if ( domStatus.slow ) return 1;
@@ -2018,7 +2018,7 @@
 		prefs.watchlist = assembleCache(list, prefs.watchlist);
 		prefs.site = host;
 		
-		let compressed = setDesc();
+		let compressed = setDesc(prefs);
 		if ( compressed.length >= 9990 ) return log.notice(`Onsite storage limit exceeded: ${compressed.length}/9990`);
 		await checkChanges();
 		
@@ -2142,6 +2142,7 @@
 		eabRefresh();
 	}
 	
+	let dPrefs = { 'watchlist': [], 'blacklist': {}, 'time': [ now(), now() ], 'ver': storage('eabVersion'), 'sites': [ ] };
 	async function getPrefs(action) {
 		log.set('action', action);
 		let sets;
@@ -2166,8 +2167,11 @@
 	async function handlePrefs(set) {
 		let eabPrefs = set.description.split('\n')[5];
 		
-		if ( eabPrefs.substr(0,2) !== '{"' ) eabPrefs = LZString.decompressFromUTF16(eabPrefs);  // backward compatibility pre-1.3
-		eabPrefs = JSON.parse(eabPrefs);
+		if ( !eabPrefs ) eabPrefs = dPrefs;
+		else {
+			if ( eabPrefs.substr(0,2) !== '{"' ) eabPrefs = LZString.decompressFromUTF16(eabPrefs);  // backward compatibility pre-1.3
+			eabPrefs = JSON.parse(eabPrefs);
+		}
 		
 		if ( !eabPrefs.sites ) eabPrefs.sites = [ ];
 		if ( !eabPrefs.ver ) {  // backward compatibility pre-2.0
@@ -2196,13 +2200,12 @@
 		log.set('action', 'First-time setup...');
 		let name = 'artist_watchlist__' + Math.random().toString(36).substr(2, 10);
 
-		let eabPrefs = { 'watchlist': [], 'blacklist': {}, 'time': [ now(), now() ], 'ver': storage('eabVersion'), 'sites': [ ] };
-		let create = await request('POST', '/set/create.json', { 'set[name]': name, 'set[shortname]': name, 'set[public]': 'false', 'set[description]': setDesc() }).catch(quitReq);
+		let create = await request('POST', '/set/create.json', { 'set[name]': name, 'set[shortname]': name, 'set[public]': 'false', 'set[description]': setDesc(dPrefs) }).catch(quitReq);
 		
 		storage('eabSetId', create.set_id);
 		await request('POST', '/set/add_post.json', [`set_id=${storage('eabSetId')}`, 'post_id=65067']).catch(quitReq);
-		return Promise.resolve(eabPrefs);
-	} 
+		return Promise.resolve(dPrefs);
+	}
 	
 	if ( storage('eabTime') && storage('eabSetId') && storage('eabPrefs') ) init();
 	else getPrefs('Requesting user data...').then(handlePrefs, firstTime).then(readyPrefs).then(init);
