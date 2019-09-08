@@ -19,8 +19,8 @@
 // @require      https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
 // ==/UserScript==
 
-if ( window.artistBasis ) throw new Error('Artist Basis should only run once.');
-window.artistBasis = true;
+if ( unsafeWindow.artistBasis ) throw new Error('Artist Basis should only run once.');
+unsafeWindow.artistBasis = true;
 
 (async function() {
 	
