@@ -2,7 +2,7 @@
 // @name         Artist Basis
 // @description  Artist-based tools for e621 including subscriptions and galleries
 // @namespace    https://e621.net/basis/watchlist
-// @version      2.0.6
+// @version      2.0.7
 // @author       index
 // @license      GPL-3.0-or-later
 // @match        *://*.e621.net/*
@@ -18,6 +18,9 @@
 // @require      https://raw.githubusercontent.com/pieroxy/lz-string/master/libs/lz-string.min.js
 // @require      https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
 // ==/UserScript==
+
+if ( window.artistBasis ) throw new Error('Artist Basis should only run once.');
+window.artistBasis = true;
 
 (async function() {
 	
