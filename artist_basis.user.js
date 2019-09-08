@@ -2,7 +2,7 @@
 // @name         Artist Basis
 // @description  Artist-based tools for e621 including subscriptions and galleries
 // @namespace    https://e621.net/basis/watchlist
-// @version      2.0.5
+// @version      2.0.6
 // @author       index
 // @license      GPL-3.0-or-later
 // @match        *://*.e621.net/*
@@ -11,15 +11,18 @@
 // @updateURL    https://raw.githubusercontent.com/index-eab/artist-basis/master/artist_basis.meta.js
 // @downloadURL  https://raw.githubusercontent.com/index-eab/artist-basis/master/artist_basis.user.js
 // @supportURL   https://e926.net/forum/show/260782
+// @grant        GM_getResourceURL
 // @grant        GM.getResourceUrl
 // @resource     demo    https://raw.githubusercontent.com/index-eaw/artist-basis/master/img/demo_00.png
 // @resource     logos   https://raw.githubusercontent.com/index-eaw/artist-basis/master/img/logos_00.png
 // @require      https://raw.githubusercontent.com/pieroxy/lz-string/master/libs/lz-string.min.js
+// @require      https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
 // ==/UserScript==
 
 (async function() {
 	
 	'use strict';
+	console.log(GM);
 	
 	// - General - - - - - - //{
 	let notArtists = [ 'unknown_artist','unknown_artist_signature','unknown_colorist','anonymous_artist','avoid_posting','conditional_dnp','sound_warning','epilepsy_warning' ];
