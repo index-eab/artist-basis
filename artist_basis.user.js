@@ -22,7 +22,6 @@
 (async function() {
 	
 	'use strict';
-	console.log(GM);
 	
 	// - General - - - - - - //{
 	let notArtists = [ 'unknown_artist','unknown_artist_signature','unknown_colorist','anonymous_artist','avoid_posting','conditional_dnp','sound_warning','epilepsy_warning' ];
