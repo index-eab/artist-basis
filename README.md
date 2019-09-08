@@ -2,7 +2,7 @@
   
   
 #### Arist Watchlist
-![Artist Watchlist](https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/watchlist.jpg)
+![Artist Watchlist](https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/watchlist2.jpg)
 This page offers specialized tag subscriptions for artists. It helps you keep up with the activity of your favorite artists on e621, and also provides convenient access to primary sources for uploaders. In most places where you find artist tags on the site, you'll find a small ♥ icon to add that artist to the watchlist.
 
 #### Arist Gallery
