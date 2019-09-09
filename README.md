@@ -1,23 +1,23 @@
 **Artist Basis** is a collection of tools to help you discover new artists and keep an eye on your favorites. The following features are added:
   
   
-#### Arist Watchlist
+#### Artist Watchlist
 ![Artist Watchlist](https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/watchlist2.jpg)
 This page offers specialized tag subscriptions for artists. It helps you keep up with the activity of your favorite artists on e621, and also provides convenient access to more primary sources. In most places where artist tags exist on the site, you'll find a small ♥ icon to add that artist to the watchlist.
 
-#### Arist Gallery
-#### ![Artist Gallery](https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/gallery.jpg)
+#### Artist Gallery
+![Artist Gallery](https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/gallery.jpg)
 An overwhelming number of posts exist on e621, so it can be difficult to find artists you're interested in. The Artist Gallery lets you browse artist tags on the site in a gallery format, giving an artist with 2000 posts and one with 10 posts an equal platform. An artist's post with the highest favorite count is the one shown.
 
 There's a gallery for each artist database on the site - tags and wikis. The tag database is faster and more complete, but they each have their uses. More info can be found in the tool's help page.
 
-#### Arist Search
-#### ![Artist Search](https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/search.jpg)
+#### Artist Search
+![Artist Search](https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/search.jpg)
 This page searches both artist databases for a given creator and presents the results in a way that makes sense (and in a gallery format, of course). It can make searching for an artist by name or alias much easier.
 
-#### Other
-* A "View artists" mode is also added to the mode menu.
-* Blacklisting is supported. 
+#### View artists
+![View artists](https://raw.githubusercontent.com/index-eab/artist-basis/master/img/demo/view_artists.jpg)
+This simple addition to the mode menu shows you the artists associated with each post. Expansion to this feature is planned for a later release.
   
   
 ## Installation
