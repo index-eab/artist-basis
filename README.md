@@ -22,8 +22,8 @@ This simple addition to the mode menu shows you the artists associated with each
   
 ## Installation
 1. Have a userscript manager (eg Tampermonkey - ![Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) **·** ![Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo?hl=en) **·** ![Other](https://www.tampermonkey.net/)
-2. Install here: https://github.com/index-eab/artist-basis/raw/master/artist_basis.user.js
-3. If you already have an old version of Artist Watchlist installed, please remove it.
+2. Install the script from here: https://github.com/index-eab/artist-basis/raw/master/artist_basis.user.js
+3. If you already have an old version of Artist Watchlist (version 1.x) installed, please remove it.
   
 <details><summary>Version history</summary>
 
